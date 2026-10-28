@@ -10,6 +10,7 @@
   const peerNames = new Map();
   const remoteStreams = new Map();
   const videoTiles = new Map();
+  const videoModes = new Map();
   const signalQueues = new Map();
 
   let activeFilter = "all";
@@ -127,13 +128,18 @@
     $("#chatMessages").append(item);
     $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
   }
+  function refreshVideoGridLayout() {
+    const grid = $("#videoGrid");
+    grid.dataset.count = String(videoTiles.size);
+    grid.classList.toggle("has-screen-share", [...videoTiles.values()].some(entry => entry.root.dataset.kind === "screen"));
+  }
   function createVideoTile(id, name, local = false) {
     let tile = videoTiles.get(id);
     if (tile) {
       tile.name.textContent = local ? `${name} · شما` : name;
       return tile;
     }
-    const root = document.createElement("div"); root.className = "video-tile";
+    const root = document.createElement("div"); root.className = "video-tile"; root.dataset.kind = "none";
     const avatar = document.createElement("span"); avatar.className = "tile-avatar"; avatar.textContent = name.trim()[0] || "؟";
     const video = document.createElement("video"); video.autoplay = true; video.playsInline = true; video.muted = true;
     const label = document.createElement("span"); label.className = "video-name"; label.textContent = local ? `${name} · شما` : name;
@@ -143,11 +149,16 @@
     $("#videoGrid").append(root);
     tile = { root, avatar, video, name: label, audio, audioState, local };
     videoTiles.set(id, tile);
+    refreshVideoGridLayout();
     return tile;
   }
   function updateVideoTile(id, name, stream, local = false) {
     const tile = createVideoTile(id, name, local);
-    const videoTracks = stream?.getVideoTracks().filter(track => track.readyState === "live" && track.enabled) || [];
+    const mode = local
+      ? (shareStream ? "screen" : (cameraTrack?.readyState === "live" && cameraTrack.enabled ? "camera" : "none"))
+      : (videoModes.get(id) || "none");
+    tile.root.dataset.kind = mode;
+    const videoTracks = mode === "none" ? [] : (stream?.getVideoTracks().filter(track => track.readyState === "live" && track.enabled) || []);
     const audioTracks = stream?.getAudioTracks().filter(track => track.readyState === "live") || [];
     tile.root.classList.toggle("has-video", videoTracks.length > 0);
     tile.video.hidden = videoTracks.length === 0;
@@ -168,13 +179,21 @@
       ? (localAudioTrack?.enabled ? "میکروفن روشن" : "")
       : (audioTracks.length ? "صدا متصل" : "");
     $(".room-stage").classList.toggle("has-video", [...videoTiles.values()].some(entry => !entry.video.hidden));
+    refreshVideoGridLayout();
     return tile;
   }
   function removeVideoTile(id) {
     const tile = videoTiles.get(id);
     if (!tile) return;
     tile.video.srcObject = null; tile.audio.pause(); tile.audio.srcObject = null; tile.root.remove(); videoTiles.delete(id);
+    videoModes.delete(id);
     $(".room-stage").classList.toggle("has-video", [...videoTiles.values()].some(entry => !entry.video.hidden));
+    refreshVideoGridLayout();
+  }
+  function setRemoteVideoMode(id, mode) {
+    const safeMode = mode === "screen" || mode === "camera" ? mode : "none";
+    videoModes.set(id, safeMode);
+    updateVideoTile(id, peerNames.get(id) || "مهمان", remoteStreams.get(id), false);
   }
   function refreshLocalTile() {
     if (!selfId) return;
@@ -300,6 +319,7 @@
     if (existing?.readyState === "live") {
       existing.enabled = !existing.enabled;
       setDeviceButton(kind, existing.enabled);
+      if (!isAudio) send({ type: "video-mode", mode: existing.enabled ? "camera" : "none" });
       refreshLocalTile();
       announce(isAudio ? (existing.enabled ? "میکروفن روشن شد" : "میکروفن خاموش شد") : (existing.enabled ? "دوربین روشن شد" : "دوربین خاموش شد"));
       return;
@@ -310,15 +330,20 @@
     }
     button.disabled = true;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(isAudio ? { audio: true, video: false } : { audio: false, video: true });
+      const mediaConstraints = isAudio
+        ? { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }
+        : { audio: false, video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 }, facingMode: "user" } };
+      const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
       const track = (isAudio ? stream.getAudioTracks() : stream.getVideoTracks())[0];
       if (!track) throw new Error("مرورگر رسانهٔ درخواستی را برنگرداند");
       if (isAudio) localAudioTrack = track; else cameraTrack = track;
       track.onended = () => {
         if (isAudio) localAudioTrack = null; else cameraTrack = null;
+        if (!isAudio) send({ type: "video-mode", mode: "none" });
         setDeviceButton(kind, false); refreshLocalTile();
       };
       await attachDeviceTrack(kind, track);
+      if (!isAudio) send({ type: "video-mode", mode: "camera" });
       setDeviceButton(kind, true); refreshLocalTile();
       announce(isAudio ? "میکروفن به اتاق وصل شد" : "دوربین به اتاق وصل شد");
     } catch (error) {
@@ -343,6 +368,7 @@
       }
     }
     oldStream.getTracks().forEach(track => { track.onended = null; track.stop(); });
+    send({ type: "video-mode", mode: cameraTrack?.readyState === "live" && cameraTrack.enabled ? "camera" : "none" });
     const button = $("[data-share]"); button.classList.remove("on", "off"); $("span", button).textContent = "شیر اسکرین";
     refreshLocalTile();
     stoppingShare = false;
@@ -360,7 +386,7 @@
     }
     const button = $("[data-share]"); button.disabled = true;
     try {
-      shareStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      shareStream = await navigator.mediaDevices.getDisplayMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } }, audio: true });
       const videoTrack = shareStream.getVideoTracks()[0];
       if (!videoTrack) throw new Error("No screen video track was selected");
       videoTrack.onended = () => { if (shareStream) stopScreenShare(); };
@@ -370,10 +396,23 @@
         const audioTrack = shareStream.getAudioTracks().find(track => track.readyState === "live");
         if (audioTrack) state.shareAudioTransceiver = state.pc.addTransceiver(audioTrack, { direction: "sendrecv", streams: [shareStream] });
       }
+      send({ type: "video-mode", mode: "screen" });
       button.classList.add("on"); $("span", button).textContent = "توقف شیر";
       refreshLocalTile(); announce("انتخاب صفحه باز شد؛ تصویر صفحه به اتاق فرستاده می‌شود");
     } catch (error) {
+      for (const state of peerConnections.values()) {
+        const replacement = cameraTrack?.readyState === "live" && cameraTrack.enabled ? cameraTrack : null;
+        await state.videoTransceiver.sender.replaceTrack(replacement).catch(() => {});
+        state.videoTransceiver.direction = replacement ? "sendrecv" : "recvonly";
+        if (state.shareAudioTransceiver) {
+          state.pc.removeTrack(state.shareAudioTransceiver.sender);
+          state.shareAudioTransceiver = null;
+        }
+      }
       shareStream?.getTracks().forEach(track => track.stop()); shareStream = null;
+      send({ type: "video-mode", mode: cameraTrack?.readyState === "live" && cameraTrack.enabled ? "camera" : "none" });
+      button.classList.remove("on"); $("span", button).textContent = "شیر اسکرین";
+      refreshLocalTile();
       if (error.name === "NotAllowedError") announce("اشتراک صفحه لغو شد");
       else announce("اشتراک صفحه شروع نشد");
     } finally { button.disabled = false; }
@@ -390,14 +429,19 @@
       replaceRoomHash(activeRoomId);
       setNetworkStatus("● سرور وصل است", true);
       updateParticipants();
-      message.peers.forEach(peer => { peerNames.set(peer.id, peer.name); ensurePeer(peer.id, peer.name); });
+      message.peers.forEach(peer => { peerNames.set(peer.id, peer.name); videoModes.set(peer.id, peer.videoMode || "none"); ensurePeer(peer.id, peer.name); });
       updateParticipants();
       return;
     }
     if (message.type === "peer-joined") {
       peerNames.set(message.peer.id, message.peer.name);
+      videoModes.set(message.peer.id, message.peer.videoMode || "none");
       updateParticipants();
       addSystemMessage(`${message.peer.name} وارد اتاق شد`);
+      return;
+    }
+    if (message.type === "video-mode") {
+      setRemoteVideoMode(message.peerId, message.mode);
       return;
     }
     if (message.type === "peer-left") {
@@ -457,6 +501,7 @@
     $("#chatMessages").replaceChildren();
     chatVisible = true;
     $("#chatPanel").hidden = false;
+    $(".room-layout").classList.remove("chat-hidden");
     addSystemMessage("به اتاق سامیکا خوش اومدی! لینک را برای دوستانت بفرست 👋");
     setNetworkStatus("● در حال اتصال…", false);
     getDisplayName();
@@ -472,7 +517,7 @@
       socket.close(); socket = null;
     }
     for (const state of peerConnections.values()) state.pc.close();
-    peerConnections.clear(); peerNames.clear(); remoteStreams.clear(); signalQueues.clear();
+    peerConnections.clear(); peerNames.clear(); remoteStreams.clear(); videoModes.clear(); signalQueues.clear();
     for (const id of [...videoTiles.keys()]) removeVideoTile(id);
     if (localAudioTrack) { localAudioTrack.onended = null; localAudioTrack.stop(); }
     if (cameraTrack) { cameraTrack.onended = null; cameraTrack.stop(); }
@@ -533,6 +578,7 @@
   $$('[data-toggle="chat"]').forEach(button => button.addEventListener("click", () => {
     chatVisible = !chatVisible;
     $("#chatPanel").hidden = !chatVisible;
+    $(".room-layout").classList.toggle("chat-hidden", !chatVisible);
     button.classList.toggle("on", chatVisible);
     announce(chatVisible ? "چت نمایش داده شد" : "چت پنهان شد");
   }));

@@ -136,12 +136,13 @@ wss.on("connection", socket => {
       const requestedRoomName = cleanText(message.roomName, 48, "اتاق سامیکا");
       if (room.peers.size === 0) room.name = requestedRoomName;
       const id = randomUUID();
-      const peers = [...room.peers.values()].map(peer => ({ id: peer.id, name: peer.name }));
-      socket.peer = { id, roomId, name };
-      room.peers.set(id, { id, name, socket });
+      const peer = { id, roomId, name, videoMode: "none", socket };
+      const peers = [...room.peers.values()].map(existing => ({ id: existing.id, name: existing.name, videoMode: existing.videoMode }));
+      socket.peer = peer;
+      room.peers.set(id, peer);
       send(socket, { type: "joined", selfId: id, roomId, roomName: room.name, peers });
       for (const peer of room.peers.values()) {
-        if (peer.id !== id) send(peer.socket, { type: "peer-joined", peer: { id, name } });
+        if (peer.id !== id) send(peer.socket, { type: "peer-joined", peer: { id, name, videoMode: "none" } });
       }
       return;
     }
@@ -169,6 +170,14 @@ wss.on("connection", socket => {
       if (!text) return;
       for (const other of room.peers.values()) {
         if (other.id !== peer.id) send(other.socket, { type: "chat", peerId: peer.id, name: peer.name, text, at: Date.now() });
+      }
+      return;
+    }
+
+    if (message.type === "video-mode") {
+      peer.videoMode = message.mode === "screen" || message.mode === "camera" ? message.mode : "none";
+      for (const other of room.peers.values()) {
+        if (other.id !== peer.id) send(other.socket, { type: "video-mode", peerId: peer.id, mode: peer.videoMode });
       }
       return;
     }
