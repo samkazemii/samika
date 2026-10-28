@@ -293,6 +293,27 @@
     const shareVideo = shareStream?.getVideoTracks().find(track => track.readyState === "live");
     return shareVideo || (cameraTrack?.readyState === "live" && cameraTrack.enabled ? cameraTrack : null);
   }
+  async function tuneVideoSender(sender, { maxBitrate = 1400000, maxFramerate = 20 } = {}) {
+    try {
+      const parameters = sender.getParameters();
+      if (!parameters.encodings?.length) return;
+      parameters.encodings = parameters.encodings.map(encoding => ({ ...encoding, maxBitrate, maxFramerate }));
+      if ("degradationPreference" in parameters) parameters.degradationPreference = "maintain-framerate";
+      await sender.setParameters(parameters);
+    } catch (error) {
+      console.debug("Samika could not apply optional video bandwidth limits", error);
+    }
+  }
+  function videoSenderLimits() {
+    const recipientCount = Math.max(peerConnections.size, 1);
+    return shareStream
+      ? { maxBitrate: Math.max(400000, Math.min(1400000, Math.floor(5600000 / recipientCount))), maxFramerate: 20 }
+      : { maxBitrate: Math.max(300000, Math.min(800000, Math.floor(3200000 / recipientCount))), maxFramerate: 24 };
+  }
+  async function retunePeerVideoSenders() {
+    const limits = videoSenderLimits();
+    await Promise.all([...peerConnections.values()].map(state => tuneVideoSender(state.videoTransceiver.sender, limits)));
+  }
   function activeLocalStream() {
     const stream = new MediaStream();
     if (localAudioTrack?.readyState === "live") stream.addTrack(localAudioTrack);
@@ -366,6 +387,60 @@
     grid.dataset.count = String(videoTiles.size);
     grid.classList.toggle("has-screen-share", [...videoTiles.values()].some(entry => entry.root.dataset.kind === "screen"));
   }
+  async function requestFullscreenFor(element) {
+    const request = element?.requestFullscreen || element?.webkitRequestFullscreen;
+    if (request) {
+      try { await request.call(element); return true; } catch {}
+    }
+    return false;
+  }
+  function fullscreenActive() {
+    return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+  async function exitFullscreen() {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) await exit.call(document);
+  }
+  function clearPseudoFullscreen() {
+    $$(".samika-pseudo-fullscreen").forEach(element => element.classList.remove("samika-pseudo-fullscreen"));
+    document.body.classList.remove("samika-pseudo-fullscreen-active");
+    refreshFullscreenControls();
+  }
+  async function toggleFullscreen(element) {
+    if (element.classList.contains("samika-pseudo-fullscreen")) { clearPseudoFullscreen(); return true; }
+    if (fullscreenActive()) { await exitFullscreen().catch(() => {}); return true; }
+    clearPseudoFullscreen();
+    if (await requestFullscreenFor(element)) return true;
+    // iOS Safari and some installed web apps do not expose the Fullscreen API.
+    // Use a viewport-sized overlay there so received video remains enlargable.
+    element.classList.add("samika-pseudo-fullscreen");
+    document.body.classList.add("samika-pseudo-fullscreen-active");
+    return true;
+  }
+  function updateTileFullscreenButton(tile) {
+    const active = tile.root.classList.contains("samika-pseudo-fullscreen") || document.fullscreenElement === tile.root || document.webkitFullscreenElement === tile.root;
+    tile.fullscreen.textContent = active ? "×" : "⛶";
+    const label = t(active ? "خروج از تمام‌صفحه" : "تمام‌صفحه‌کردن تصویر");
+    tile.fullscreen.setAttribute("aria-label", label);
+    tile.fullscreen.title = label;
+  }
+  function refreshFullscreenControls() {
+    for (const tile of videoTiles.values()) updateTileFullscreenButton(tile);
+    const mediaButton = $("#mediaFullscreen");
+    if (mediaButton) {
+      const active = $("#sharedPlayer").classList.contains("samika-pseudo-fullscreen") || document.fullscreenElement === $("#sharedPlayer") || document.webkitFullscreenElement === $("#sharedPlayer");
+      const label = t(active ? "خروج از تمام‌صفحه" : "تمام‌صفحه");
+      mediaButton.setAttribute("aria-label", label);
+      mediaButton.title = label;
+      mediaButton.textContent = active ? "×" : "⛶";
+    }
+  }
+  document.addEventListener("fullscreenchange", refreshFullscreenControls);
+  document.addEventListener("webkitfullscreenchange", refreshFullscreenControls);
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && document.body.classList.contains("samika-pseudo-fullscreen-active")) clearPseudoFullscreen();
+  });
+  window.addEventListener("samika:languagechange", refreshFullscreenControls);
   function createVideoTile(id, name, local = false) {
     let tile = videoTiles.get(id);
     if (tile) {
@@ -380,10 +455,22 @@
     if (local) setLocalizedText(label, "{{name}} · شما", { name }); else label.textContent = name;
     const audioState = document.createElement("span"); audioState.className = "audio-state";
     const audio = document.createElement("audio"); audio.autoplay = true; audio.hidden = true;
-    root.append(avatar, video, label, audioState, audio);
+    const fullscreen = document.createElement("button"); fullscreen.type = "button"; fullscreen.className = "tile-fullscreen";
+    fullscreen.textContent = "⛶"; fullscreen.hidden = true;
+    fullscreen.addEventListener("click", async event => {
+      event.stopPropagation();
+      await toggleFullscreen(root);
+      updateTileFullscreenButton(tile);
+    });
+    video.addEventListener("click", async () => {
+      if (!fullscreenActive() && !root.classList.contains("samika-pseudo-fullscreen")) await toggleFullscreen(root);
+      updateTileFullscreenButton(tile);
+    });
+    root.append(avatar, video, label, audioState, audio, fullscreen);
     $("#videoGrid").append(root);
-    tile = { root, avatar, video, name: label, audio, audioState, local };
+    tile = { root, avatar, video, name: label, audio, audioState, fullscreen, local };
     videoTiles.set(id, tile);
+    updateTileFullscreenButton(tile);
     refreshVideoGridLayout();
     return tile;
   }
@@ -397,6 +484,7 @@
     const audioTracks = stream?.getAudioTracks().filter(track => track.readyState === "live") || [];
     tile.root.classList.toggle("has-video", videoTracks.length > 0);
     tile.video.hidden = videoTracks.length === 0;
+    tile.fullscreen.hidden = videoTracks.length === 0;
     tile.avatar.textContent = name.trim()[0] || "؟";
     if (videoTracks.length) {
       const videoStream = new MediaStream(videoTracks);
@@ -569,6 +657,7 @@
     if (state) state.pc.close();
     peerConnections.delete(peerId); peerNames.delete(peerId); remoteStreams.delete(peerId); signalQueues.delete(peerId); roomAdmins.delete(peerId);
     removeVideoTile(peerId); updateMediaPermissions(); updateParticipants();
+    retunePeerVideoSenders();
   }
 
   async function ensurePeer(peerId, name = peerNames.get(peerId) || t("مهمان")) {
@@ -623,6 +712,7 @@
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "failed") announce("اتصال همتا برقرار نشد؛ این شبکه ممکن است به TURN نیاز داشته باشد");
     };
+    if (outgoingVideo) retunePeerVideoSenders();
     return state;
   }
   async function handleSignal(message) {
@@ -658,6 +748,7 @@
       await transceiver.sender.replaceTrack(track);
       transceiver.direction = "sendrecv";
     }
+    if (kind === "video") await retunePeerVideoSenders();
   }
   async function toggleDevice(kind) {
     const isAudio = kind === "audio";
@@ -719,6 +810,7 @@
         state.shareAudioTransceiver.direction = "recvonly";
       }
     }
+    if (cameraTrack?.readyState === "live" && cameraTrack.enabled) await retunePeerVideoSenders();
     oldStream.getTracks().forEach(track => { track.onended = null; track.stop(); });
     send({ type: "video-mode", mode: cameraTrack?.readyState === "live" && cameraTrack.enabled ? "camera" : "none" });
     const button = $("[data-share]"); button.classList.remove("on", "off"); $("span", button).textContent = t("شیر اسکرین");
@@ -733,16 +825,22 @@
     }
     if (shareStream) { await stopScreenShare(); return; }
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      announce("اشتراک صفحه در این مرورگر پشتیبانی نمی‌شود");
+      announce("برای شروع اشتراک صفحه از دسکتاپ و Chrome یا Edge استفاده کن؛ با گوشی می‌توانی تصویر دریافتی را بزرگ کنی");
       return;
     }
     const button = $("[data-share]"); button.disabled = true;
     try {
+      announce("از پنجرهٔ انتخاب مرورگر، تب یا پنجرهٔ برنامهٔ ویدئو را انتخاب کن؛ برای صدای ویدئو، اشتراک تب مرورگر را انتخاب کن");
       shareStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 15, max: 30 } },
+        video: {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 20, max: 24 },
+        },
         audio: true,
         systemAudio: "include",
-        preferCurrentTab: true,
+        selfBrowserSurface: "exclude",
+        surfaceSwitching: "include",
       });
       const videoTrack = shareStream.getVideoTracks()[0];
       if (!videoTrack) throw new Error("No screen video track was selected");
@@ -754,6 +852,7 @@
         await state.shareAudioTransceiver.sender.replaceTrack(audioTrack);
         state.shareAudioTransceiver.direction = audioTrack ? "sendrecv" : "recvonly";
       }
+      await retunePeerVideoSenders();
       send({ type: "video-mode", mode: "screen" });
       button.classList.add("on"); $("span", button).textContent = t("توقف شیر");
       refreshLocalTile();
@@ -768,7 +867,9 @@
           state.shareAudioTransceiver.direction = "recvonly";
         }
       }
-      shareStream?.getTracks().forEach(track => track.stop()); shareStream = null;
+      const failedShare = shareStream; shareStream = null;
+      failedShare?.getTracks().forEach(track => track.stop());
+      if (cameraTrack?.readyState === "live" && cameraTrack.enabled) await retunePeerVideoSenders();
       send({ type: "video-mode", mode: cameraTrack?.readyState === "live" && cameraTrack.enabled ? "camera" : "none" });
       button.classList.remove("on"); $("span", button).textContent = t("شیر اسکرین");
       refreshLocalTile();
@@ -814,7 +915,7 @@
       setRemoteVideoMode(message.peerId, message.mode);
       return;
     }
-    if (message.type === "reaction") { showReaction(message); return; }
+    if (message.type === "reaction") { if (message.peerId !== selfId) showReaction(message); return; }
     if (message.type === "game-state") { sharedGame = message.game || null; renderGame(); return; }
     if (message.type === "media-state") {
       if (Number.isFinite(message.serverNow)) serverClockOffset = message.serverNow - Date.now();
@@ -1020,22 +1121,9 @@
   });
   $("#mediaClear").addEventListener("click", () => commandMedia("clear"));
   $("#mediaFullscreen").addEventListener("click", async () => {
-    const video = $("#sharedVideo");
     const player = $("#sharedPlayer");
-    try {
-      const activeFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
-      const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
-      if (activeFullscreen) { if (exitFullscreen) await exitFullscreen.call(document); return; }
-      const requestFullscreen = player.requestFullscreen || player.webkitRequestFullscreen;
-      if (requestFullscreen) {
-        try { await requestFullscreen.call(player); return; } catch {}
-      }
-      if (sharedMedia?.kind === "direct" && typeof video.webkitEnterFullscreen === "function") { video.webkitEnterFullscreen(); return; }
-      const frame = $("#youtubePlayer iframe");
-      const frameFullscreen = frame?.requestFullscreen || frame?.webkitRequestFullscreen;
-      if (frameFullscreen) { await frameFullscreen.call(frame); return; }
-      throw new Error("Fullscreen is unavailable");
-    } catch { announce("تمام‌صفحه در این مرورگر در دسترس نیست"); }
+    await toggleFullscreen(player);
+    refreshFullscreenControls();
   });
   function applyRoomFilters() {
     const query = $("#roomSearch").value.trim().toLocaleLowerCase(i18n?.locale || "fa-IR");
@@ -1074,7 +1162,12 @@
   $("[data-share]").addEventListener("click", toggleScreenShare);
   $("#reactionToolbar")?.addEventListener("click", event => {
     const button = event.target.closest("[data-reaction]");
-    if (button) send({ type: "reaction", emoji: button.dataset.reaction });
+    if (!button) return;
+    const emoji = button.dataset.reaction;
+    if (!send({ type: "reaction", emoji })) { announce("برای فرستادن واکنش، ابتدا به اتاق وصل شو"); return; }
+    showReaction({ emoji, name: displayName, peerId: selfId });
+    button.classList.add("reaction-sent");
+    setTimeout(() => button.classList.remove("reaction-sent"), 420);
   });
   $("#gameToggle")?.addEventListener("click", event => {
     const panel = $("#gamePanel");

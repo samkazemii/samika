@@ -295,7 +295,7 @@ wss.on("connection", socket => {
       const emoji = typeof message.emoji === "string" && ["😂", "😭", "❤️", "😮", "🔥", "👏"].includes(message.emoji) ? message.emoji : "";
       if (!emoji) return;
       const payload = { type: "reaction", peerId: peer.id, name: peer.name, emoji, at: Date.now() };
-      for (const other of room.peers.values()) send(other.socket, payload);
+      for (const other of room.peers.values()) if (other.id !== peer.id) send(other.socket, payload);
       return;
     }
 
