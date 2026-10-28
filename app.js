@@ -47,11 +47,11 @@
 
   try { displayName = localStorage.getItem("samika-display-name") || ""; } catch {}
 
-  function announce(message, values) {
+  function announce(message, values, duration = 2800) {
     setLocalizedText(toast, message, values);
     toast.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), duration);
   }
   function showBackdrop(backdrop) {
     backdrop.classList.add("open");
@@ -395,9 +395,11 @@
     return false;
   }
   function fullscreenActive() {
-    return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    return Boolean(document.fullscreenElement || document.webkitFullscreenElement || $$("video").some(video => video.webkitDisplayingFullscreen));
   }
   async function exitFullscreen() {
+    const nativeVideo = $$("video").find(video => video.webkitDisplayingFullscreen);
+    if (nativeVideo?.webkitExitFullscreen) { nativeVideo.webkitExitFullscreen(); return; }
     const exit = document.exitFullscreen || document.webkitExitFullscreen;
     if (exit) await exit.call(document);
   }
@@ -406,11 +408,21 @@
     document.body.classList.remove("samika-pseudo-fullscreen-active");
     refreshFullscreenControls();
   }
-  async function toggleFullscreen(element) {
+  async function toggleFullscreen(element, fallbackVideo = null, fallbackFrame = null) {
     if (element.classList.contains("samika-pseudo-fullscreen")) { clearPseudoFullscreen(); return true; }
     if (fullscreenActive()) { await exitFullscreen().catch(() => {}); return true; }
     clearPseudoFullscreen();
+    // On iPhone Safari a video can enter the native media fullscreen while a div cannot.
+    // Call this synchronously from the tap before awaiting any other browser API.
+    if (!element.requestFullscreen && fallbackVideo?.webkitEnterFullscreen) {
+      try { fallbackVideo.webkitEnterFullscreen(); return true; } catch {}
+    }
     if (await requestFullscreenFor(element)) return true;
+    if (fallbackVideo && await requestFullscreenFor(fallbackVideo)) return true;
+    if (fallbackVideo?.webkitEnterFullscreen) {
+      try { fallbackVideo.webkitEnterFullscreen(); return true; } catch {}
+    }
+    if (fallbackFrame && await requestFullscreenFor(fallbackFrame)) return true;
     // iOS Safari and some installed web apps do not expose the Fullscreen API.
     // Use a viewport-sized overlay there so received video remains enlargable.
     element.classList.add("samika-pseudo-fullscreen");
@@ -418,7 +430,7 @@
     return true;
   }
   function updateTileFullscreenButton(tile) {
-    const active = tile.root.classList.contains("samika-pseudo-fullscreen") || document.fullscreenElement === tile.root || document.webkitFullscreenElement === tile.root;
+    const active = tile.root.classList.contains("samika-pseudo-fullscreen") || document.fullscreenElement === tile.root || document.webkitFullscreenElement === tile.root || tile.video.webkitDisplayingFullscreen;
     tile.fullscreen.textContent = active ? "×" : "⛶";
     const label = t(active ? "خروج از تمام‌صفحه" : "تمام‌صفحه‌کردن تصویر");
     tile.fullscreen.setAttribute("aria-label", label);
@@ -428,7 +440,9 @@
     for (const tile of videoTiles.values()) updateTileFullscreenButton(tile);
     const mediaButton = $("#mediaFullscreen");
     if (mediaButton) {
-      const active = $("#sharedPlayer").classList.contains("samika-pseudo-fullscreen") || document.fullscreenElement === $("#sharedPlayer") || document.webkitFullscreenElement === $("#sharedPlayer");
+      const video = $("#sharedVideo");
+      const frame = $("#youtubePlayer iframe");
+      const active = $("#sharedPlayer").classList.contains("samika-pseudo-fullscreen") || document.fullscreenElement === $("#sharedPlayer") || document.webkitFullscreenElement === $("#sharedPlayer") || video.webkitDisplayingFullscreen || document.fullscreenElement === frame || document.webkitFullscreenElement === frame;
       const label = t(active ? "خروج از تمام‌صفحه" : "تمام‌صفحه");
       mediaButton.setAttribute("aria-label", label);
       mediaButton.title = label;
@@ -437,6 +451,8 @@
   }
   document.addEventListener("fullscreenchange", refreshFullscreenControls);
   document.addEventListener("webkitfullscreenchange", refreshFullscreenControls);
+  $("#sharedVideo").addEventListener("webkitbeginfullscreen", refreshFullscreenControls);
+  $("#sharedVideo").addEventListener("webkitendfullscreen", refreshFullscreenControls);
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && document.body.classList.contains("samika-pseudo-fullscreen-active")) clearPseudoFullscreen();
   });
@@ -459,11 +475,13 @@
     fullscreen.textContent = "⛶"; fullscreen.hidden = true;
     fullscreen.addEventListener("click", async event => {
       event.stopPropagation();
-      await toggleFullscreen(root);
+      await toggleFullscreen(root, video);
       updateTileFullscreenButton(tile);
     });
+    video.addEventListener("webkitbeginfullscreen", () => updateTileFullscreenButton(tile));
+    video.addEventListener("webkitendfullscreen", () => updateTileFullscreenButton(tile));
     video.addEventListener("click", async () => {
-      if (!fullscreenActive() && !root.classList.contains("samika-pseudo-fullscreen")) await toggleFullscreen(root);
+      if (!fullscreenActive() && !root.classList.contains("samika-pseudo-fullscreen")) await toggleFullscreen(root, video);
       updateTileFullscreenButton(tile);
     });
     root.append(avatar, video, label, audioState, audio, fullscreen);
@@ -536,13 +554,28 @@
   function showReaction(message) {
     const stage = $(".room-stage");
     if (!stage) return;
+    let feed = $(".reaction-feed", stage);
+    if (!feed) {
+      feed = document.createElement("div");
+      feed.className = "reaction-feed";
+      feed.setAttribute("aria-live", "polite");
+      feed.setAttribute("aria-relevant", "additions");
+      feed.setAttribute("aria-label", t("واکنش‌های تازه"));
+      stage.append(feed);
+    }
     const bubble = document.createElement("span");
-    bubble.className = "floating-reaction";
-    bubble.style.setProperty("--reaction-x", `${12 + Math.random() * 76}%`);
-    bubble.textContent = message.emoji;
-    if (message.name) { bubble.title = message.name; bubble.setAttribute("aria-label", `${message.name}: ${message.emoji}`); }
-    stage.append(bubble);
-    setTimeout(() => bubble.remove(), 2400);
+    bubble.className = "reaction-chip";
+    const emoji = document.createElement("span"); emoji.className = "reaction-chip-emoji"; emoji.textContent = message.emoji;
+    bubble.append(emoji);
+    if (message.name) {
+      const name = document.createElement("span"); name.className = "reaction-chip-name"; name.textContent = message.name;
+      bubble.append(name);
+      bubble.title = `${message.name}: ${message.emoji}`;
+      bubble.setAttribute("aria-label", `${message.name}: ${message.emoji}`);
+    } else bubble.setAttribute("aria-label", message.emoji);
+    feed.append(bubble);
+    while (feed.children.length > 4) feed.firstElementChild.remove();
+    setTimeout(() => bubble.remove(), 1700);
   }
 
   const challengePrompts = [
@@ -828,17 +861,22 @@
       announce("برای شروع اشتراک صفحه از دسکتاپ و Chrome یا Edge استفاده کن؛ با گوشی می‌توانی تصویر دریافتی را بزرگ کنی");
       return;
     }
+    const mobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const button = $("[data-share]"); button.disabled = true;
     try {
-      announce("از پنجرهٔ انتخاب مرورگر، تب یا پنجرهٔ برنامهٔ ویدئو را انتخاب کن؛ برای صدای ویدئو، اشتراک تب مرورگر را انتخاب کن");
+      announce(mobileDevice
+        ? "در گوشی، اگر پنجرهٔ اشتراک گزینهٔ «اشتراک صدا» داشت روشنش کن؛ iPhone و بعضی گوشی‌ها ممکن است صدای برنامه‌های دیگر مثل Instagram را به مرورگر ندهند"
+        : "برای صدای ویدئوی ویندوز، در پنجرهٔ اشتراک «کل صفحه» و گزینهٔ «صدای سیستم» را انتخاب کن؛ برای صدای ویدئوی مرورگر، تب ویدئو را انتخاب کن", undefined, 5500);
       shareStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           width: { ideal: 1280, max: 1920 },
           height: { ideal: 720, max: 1080 },
           frameRate: { ideal: 20, max: 24 },
         },
-        audio: true,
+        audio: { suppressLocalAudioPlayback: false },
         systemAudio: "include",
+        windowAudio: "system",
         selfBrowserSurface: "exclude",
         surfaceSwitching: "include",
       });
@@ -856,7 +894,12 @@
       send({ type: "video-mode", mode: "screen" });
       button.classList.add("on"); $("span", button).textContent = t("توقف شیر");
       refreshLocalTile();
-      announce(audioTrack ? "تصویر و صدای صفحه برای اتاق فرستاده می‌شود" : "تصویر شیر شد؛ این دستگاه صدای صفحه را نداد. برای صدای Instagram، میکروفن و بلندگوی گوشی را روشن کن");
+      announce(audioTrack
+        ? "تصویر و صدای صفحه برای اتاق فرستاده می‌شود"
+        : mobileDevice
+          ? "تصویر شیر شد؛ این دستگاه صدای صفحه را نداد. برای صدای Instagram، میکروفن و بلندگوی گوشی را روشن کن"
+          : "تصویر ارسال می‌شود اما مرورگر ترک صدای سیستم را نداد؛ دوباره با Chrome یا Edge و انتخاب کل صفحه و صدای سیستم امتحان کن. برای صدای ویدئوی مرورگر، تب ویدئو را انتخاب کن",
+      undefined, audioTrack ? 2800 : 6500);
     } catch (error) {
       for (const state of peerConnections.values()) {
         const replacement = cameraTrack?.readyState === "live" && cameraTrack.enabled ? cameraTrack : null;
@@ -915,7 +958,7 @@
       setRemoteVideoMode(message.peerId, message.mode);
       return;
     }
-    if (message.type === "reaction") { if (message.peerId !== selfId) showReaction(message); return; }
+    if (message.type === "reaction") { showReaction(message); return; }
     if (message.type === "game-state") { sharedGame = message.game || null; renderGame(); return; }
     if (message.type === "media-state") {
       if (Number.isFinite(message.serverNow)) serverClockOffset = message.serverNow - Date.now();
@@ -1122,7 +1165,9 @@
   $("#mediaClear").addEventListener("click", () => commandMedia("clear"));
   $("#mediaFullscreen").addEventListener("click", async () => {
     const player = $("#sharedPlayer");
-    await toggleFullscreen(player);
+    const video = sharedMedia?.kind === "direct" ? $("#sharedVideo") : null;
+    const frame = sharedMedia?.kind === "youtube" ? $("#youtubePlayer iframe") : null;
+    await toggleFullscreen(player, video, frame);
     refreshFullscreenControls();
   });
   function applyRoomFilters() {
@@ -1165,7 +1210,6 @@
     if (!button) return;
     const emoji = button.dataset.reaction;
     if (!send({ type: "reaction", emoji })) { announce("برای فرستادن واکنش، ابتدا به اتاق وصل شو"); return; }
-    showReaction({ emoji, name: displayName, peerId: selfId });
     button.classList.add("reaction-sent");
     setTimeout(() => button.classList.remove("reaction-sent"), 420);
   });

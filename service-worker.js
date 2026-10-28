@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "samika-shell-20261028-3";
+const CACHE_NAME = "samika-shell-20261028-6";
 const BASE_URL = new URL("./", self.registration.scope).href;
 const SHELL_FILES = [
   BASE_URL,
