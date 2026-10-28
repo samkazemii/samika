@@ -11,6 +11,10 @@ const host = process.env.HOST || "0.0.0.0";
 const indexPath = path.join(__dirname, "index.html");
 const rooms = new Map();
 const maxRoomSize = 8;
+const allowedOrigins = new Set([
+  "https://samkazemii.github.io",
+  ...(process.env.SAMIKA_ALLOWED_ORIGINS || "").split(",").map(origin => origin.trim()).filter(Boolean),
+]);
 
 function send(socket, payload) {
   if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(payload));
@@ -94,7 +98,10 @@ server.on("upgrade", (request, socket, head) => {
   const origin = request.headers.origin;
   let sameOrigin = true;
   if (origin) {
-    try { sameOrigin = new URL(origin).host === request.headers.host; }
+    try {
+      const normalizedOrigin = new URL(origin).origin;
+      sameOrigin = new URL(origin).host === request.headers.host || allowedOrigins.has(normalizedOrigin);
+    }
     catch { sameOrigin = false; }
   }
   if (pathname !== "/signal" || !sameOrigin) {

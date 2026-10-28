@@ -67,6 +67,7 @@
   function currentSignalUrl() {
     if (window.SAMIKA_SIGNALING_URL) return window.SAMIKA_SIGNALING_URL;
     if (location.protocol === "file:") return "";
+    if (location.hostname === "samkazemii.github.io") return "wss://samika.onrender.com/signal";
     return `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/signal`;
   }
   function setNetworkStatus(text, connected = false) {
