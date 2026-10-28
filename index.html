@@ -5,10 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0b13">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Samika">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="یک پاتوق آنلاین برای تماشای فیلم، بازی و گپ‌وگفت با دوستان.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <title>سامیکا | Samika — دورهمی آنلاین</title>
   <style>
+    [hidden] { display:none!important; }
     :root {
       color-scheme: dark;
       --bg: #0b0b13;
@@ -52,6 +58,9 @@
     .nav a { transition: color .2s; }
     .nav a:hover { color: #fff; }
     .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .install-app-button { display:inline-flex;align-items:center;gap:7px; }
+    .install-app-button>span:first-child { display:grid;place-items:center;width:19px;height:19px;border-radius:6px;background:#ffffff18;font-size:16px;line-height:1; }
+    .install-app-button.install-ready { border-color:#a991ff7a;color:#e9e2ff;background:#9b7bff20; }
     .btn { min-height: 43px; padding: 0 18px; border: 1px solid transparent; border-radius: 13px; cursor: pointer; font-weight: 700; font-size: 13px; transition: transform .18s, background .18s, border .18s; }
     .btn:hover { transform: translateY(-2px); }
     .btn-primary { color: #fff; background: linear-gradient(135deg,var(--purple),var(--purple-2)); box-shadow: 0 9px 25px #7458e344; }
@@ -114,6 +123,17 @@
     .activity-card h3 { font-size:15px;margin:0 0 5px; }
     .activity-card p { color:#9390a1;font-size:11px;margin:0;line-height:1.8; }
     .section-divider { height:1px;background:linear-gradient(90deg,transparent,#ffffff12,transparent); }
+    .recent-rooms { padding:24px 0 0; }
+    .recent-rooms-heading { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px; }
+    .recent-rooms-heading h2 { margin:0;font-size:19px; }
+    .text-button { border:0;background:none;color:#b8a6ff;font:inherit;font-size:11px;cursor:pointer; }
+    .recent-rooms-list { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,310px),1fr));gap:10px; }
+    .recent-room-card { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#ffffff05;min-width:0; }
+    .recent-room-info { display:grid;gap:3px;min-width:0; }
+    .recent-room-info strong { font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .recent-room-info small { color:#898697;font-size:9px; }
+    .recent-room-actions { display:flex;gap:6px;flex:none; }
+    .recent-room-actions .btn { min-height:36px;padding-inline:10px;font-size:10px; }
     .lobby { padding-top:61px; }
     .lobby-tools { display:flex; gap:9px; align-items:center; }
     .search-box { display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#ffffff06;color:#8f8b9e; }
@@ -216,9 +236,33 @@
     .room-stage.has-video .stage-center { display:none; }
     .video-grid { position:absolute;z-index:2;inset:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));grid-auto-rows:minmax(0,1fr);gap:10px;align-content:center; }
     .video-tile { width:100%;min-width:0;min-height:0;aspect-ratio:16/9;max-height:100%;align-self:center;position:relative;overflow:hidden;border:1px solid #ffffff24;border-radius:13px;background:linear-gradient(145deg,#343047,#1b1a27);box-shadow:0 8px 28px #0005;display:grid;place-items:center; }
-    .video-tile video { display:block;width:100%;height:100%;min-height:0;max-height:100%;position:absolute;inset:0;object-fit:cover;background:#090a10; }
+    .video-tile video { display:block;width:100%;height:100%;min-height:0;max-height:100%;position:absolute;inset:0;object-fit:contain;background:#090a10; }
     .video-tile[data-kind="screen"] { background:#080910; }
     .video-tile[data-kind="screen"] video { object-fit:contain; }
+    .media-bar { display:flex;align-items:center;gap:8px;flex:none;min-width:0; }
+    .media-bar input { flex:1;min-width:0;height:40px;border:1px solid #ffffff18;border-radius:11px;background:#0d0d15;color:#fff;padding:0 11px;outline:0;font:inherit;font-size:11px;direction:ltr;text-align:left; }
+    .media-bar input:focus { border-color:#a58bff88; }
+    .media-bar .btn { min-height:40px;padding-inline:13px;white-space:nowrap; }
+    .media-bar .btn:disabled { opacity:.62;cursor:not-allowed; }
+    .room-stage.has-shared-media .video-grid,.room-stage.has-shared-media .stage-center { display:none; }
+    .reaction-toolbar { position:absolute;z-index:14;inset-inline-start:10px;top:10px;display:flex;gap:4px;padding:4px;border:1px solid #ffffff24;border-radius:13px;background:#11101ac9;backdrop-filter:blur(10px); }
+    .reaction-toolbar button { width:38px;height:38px;border:0;border-radius:10px;background:transparent;font-size:19px;cursor:pointer;touch-action:manipulation; }
+    .reaction-toolbar button:hover,.reaction-toolbar button:focus-visible { background:#ffffff20;transform:scale(1.08); }
+    .floating-reaction { position:absolute;z-index:15;left:var(--reaction-x);bottom:7%;font-size:clamp(32px,6vw,58px);filter:drop-shadow(0 7px 14px #0009);pointer-events:none;animation:reaction-rise 2.4s ease-out forwards; }
+    @keyframes reaction-rise { 0%{opacity:0;transform:translate(-50%,20px) scale(.5)}12%{opacity:1;transform:translate(-50%,0) scale(1.15)}25%{transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-340px) scale(.82)} }
+    .shared-player { position:absolute;z-index:5;inset:0;background:#050509;display:flex;align-items:center;justify-content:center; }
+    .shared-player:fullscreen,.shared-player:-webkit-full-screen { position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;padding:0;border-radius:0;background:#000;z-index:2147483647; }
+    .shared-player[hidden] { display:none; }
+    .shared-surface { position:absolute;inset:0;display:grid;place-items:center;overflow:hidden; }
+    .shared-surface video,.shared-surface iframe,.shared-surface #youtubePlayer { display:block;width:100%;height:100%;border:0;object-fit:contain;background:#000; }
+    .shared-surface video[hidden] { display:none!important; }
+    .shared-surface #youtubePlayer[hidden] { display:none!important; }
+    .shared-controls { position:absolute;z-index:2;inset-inline:0;bottom:0;display:flex;align-items:center;gap:8px;padding:28px 12px max(10px,env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,#050509df); }
+    .shared-control { width:44px;height:44px;flex:none;display:grid;place-items:center;border:1px solid #ffffff30;border-radius:11px;color:#fff;background:#171622d9;cursor:pointer; }
+    .shared-control svg { width:18px;height:18px; }
+    .shared-time { min-width:45px;text-align:center;color:#f4f1fb;font-size:10px;direction:ltr;font-variant-numeric:tabular-nums; }
+    #mediaSeek { flex:1;min-width:30px;accent-color:#aa94ff;touch-action:pan-x;direction:ltr; }
+    .media-clear { position:absolute;z-index:6;inset-inline-end:10px;top:10px;width:44px;height:44px;border:1px solid #ffffff30;border-radius:10px;background:#15141dcc;color:#fff;cursor:pointer; }
     .video-grid[data-count="1"] { inset:0;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:0; }
     .video-grid[data-count="1"] .video-tile { height:100%;max-height:none;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none; }
     .video-grid.has-screen-share { grid-template-columns:minmax(0,2.4fr) repeat(2,minmax(100px,1fr));grid-template-rows:repeat(4,minmax(0,1fr));gap:8px; }
@@ -236,7 +280,9 @@
     .stage-center small { display:block;color:#e0dceb;font-size:10px;margin-top:3px; }
     .stream-badge { position:absolute;right:12px;top:12px;background:#0b0b13a8;border:1px solid #ffffff1c;border-radius:9px;padding:5px 8px;font-size:9px;color:#d8d4df; }
     .participant-strip { display:flex;gap:9px;overflow:auto;flex:none;max-width:100%; }
-    .participant { flex:1 0 145px;min-width:0;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;background:#ffffff04;padding:9px; }
+    .participant { appearance:none;font:inherit;text-align:start;color:inherit;opacity:1;cursor:default;flex:1 0 145px;min-width:0;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;background:#ffffff04;padding:9px; }
+    .participant:enabled { cursor:pointer;border-color:#a78bfa65;background:#aa94ff0b; }
+    .participant:enabled:hover,.participant:enabled:focus-visible { border-color:#c0aaff;background:#aa94ff20;outline:2px solid #aa94ff60;outline-offset:1px; }
     .participant .avatar { width:29px;height:29px;margin:0;border:0;font-size:10px;flex:none; }
     .participant span { display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px; }
     .participant small { display:block;color:#8d899b;font-size:8px; }
@@ -246,9 +292,26 @@
     .room-control.on { color:#eae5ff;border-color:#aa93ff55;background:#9e7fff20; }
     .room-control.off { color:#ffb6bc;background:#f865701d;border-color:#f8657044; }
     .room-control.leave { background:#ed526429;border-color:#f76b794d;color:#ffb8bf; }
+    #gameToggle { min-width:44px; }
     .chat-panel { border-inline-start:1px solid var(--line);min-height:0;display:flex;flex-direction:column;background:#101019; }
     .chat-head { padding:14px 15px;border-bottom:1px solid var(--line);font-size:11px;font-weight:800;display:flex;justify-content:space-between;align-items:center; }
     .chat-head small { color:#9290a0;font-weight:400;font-size:9px; }
+    .game-panel { min-height:0;flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;-webkit-overflow-scrolling:touch; }
+    .game-panel[hidden] { display:none!important; }
+    .game-panel h3 { margin:2px 0 0;font-size:13px; }
+    .game-panel>p,.game-hint { margin:0;color:#9793a6;font-size:9px;line-height:1.7; }
+    .game-launcher { display:grid;grid-template-columns:1fr;gap:6px;margin:2px 0 4px; }
+    .game-launcher .btn { min-height:40px;padding:0 8px;font-size:10px;text-align:start; }
+    #gameContent { display:flex;flex-direction:column;gap:9px; }
+    .game-status { margin:0;color:#ddd6ef;font-size:10px;line-height:1.7; }
+    .game-players { display:flex;justify-content:space-between;gap:8px;color:#aaa5b9;font-size:9px; }
+    .tic-board { display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-width:220px;width:100%;align-self:center; }
+    .tic-cell { height:58px;border:1px solid #ffffff18;border-radius:10px;background:#ffffff08;color:#d9ccff;font-size:24px;font-weight:800;cursor:pointer;touch-action:manipulation; }
+    .tic-cell:disabled { cursor:default;opacity:.75; }
+    .guess-form { display:flex;gap:6px; }
+    .guess-form input { min-width:0;flex:1;height:40px;border:1px solid var(--line);border-radius:10px;background:#0b0b13;color:#fff;padding:0 10px;font:inherit;font-size:16px;direction:ltr; }
+    .guess-form .btn,#gameContent>.btn { min-height:40px;padding-inline:10px;font-size:10px; }
+    .challenge-prompt { color:#e5dbff;font-size:13px;line-height:1.8;padding:10px;border:1px solid #ffffff14;border-radius:12px;background:#ffffff06; }
     .chat-messages { min-height:0;flex:1;overflow:auto;padding:13px 12px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain; }
     .chat-message { font-size:10px;line-height:1.7; }
     .chat-message b { color:#d0c1ff;font-size:9px;display:block;margin-bottom:2px; }
@@ -259,7 +322,7 @@
     .chat-compose input { flex:1;min-width:0;background:#1a1a26;border:1px solid #ffffff12;border-radius:10px;color:#fff;padding:0 10px;outline:0;font-size:16px; }
     .chat-compose button { width:36px;height:36px;border:0;border-radius:10px;background:#8566f4;color:#fff;display:grid;place-items:center;cursor:pointer; }
     .chat-compose svg { width:15px;height:15px; }
-    .toast { position:fixed;z-index:80;bottom:25px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#292538;border:1px solid #ffffff1c;color:#f1edf9;padding:10px 15px;border-radius:12px;font-size:11px;box-shadow:0 14px 36px #0008;transition:.22s;white-space:nowrap; }
+    .toast { position:fixed;z-index:80;bottom:25px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#292538;border:1px solid #ffffff1c;color:#f1edf9;padding:10px 15px;border-radius:12px;font-size:11px;box-shadow:0 14px 36px #0008;transition:.22s;max-width:calc(100vw - 24px);text-align:center;white-space:normal; }
     .toast.show { opacity:1;transform:translate(-50%,0); }
     @media(max-width:950px) {
       .hero { gap:32px;padding-top:55px; }
@@ -275,6 +338,8 @@
       .language-switcher select { min-width:78px;width:78px;height:38px;padding-inline:7px;font-size:10px; }
       .nav-actions .btn-ghost { display:none; }
       .nav-actions .btn { min-height:38px;padding:0 12px;font-size:11px; }
+      .nav-actions .install-app-button { display:inline-flex;width:40px;min-width:40px;padding:0;justify-content:center; }
+      .install-app-button>span:last-child { display:none; }
       .brand { font-size:17px; }
       .hero { display:flex;flex-direction:column;align-items:stretch;gap:32px;padding:44px 0 47px; }
       .hero-copy { max-width:none; }
@@ -290,6 +355,11 @@
       .metric strong { font-size:11px; }
       .metric span { font-size:9px; }
       .section { padding:50px 0; }
+      .recent-rooms { padding:12px 0 0; }
+      .recent-rooms-heading h2 { font-size:18px; }
+      .recent-room-card { align-items:flex-start;flex-direction:column; }
+      .recent-room-actions { width:100%; }
+      .recent-room-actions .btn { flex:1; }
       .section-head { display:block; }
       .section-head p { margin-top:9px; }
       h2 { font-size:24px; }
@@ -311,13 +381,20 @@
       .footer-inner { gap:12px;flex-wrap:wrap; }
       .room-modal { height:100%;max-height:100%;border-radius:18px; }
       .room-layout { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(240px,1fr) minmax(105px,24vh);grid-template-rows:minmax(240px,1fr) minmax(105px,24dvh); }
+      .room-layout.games-open { grid-template-rows:minmax(170px,1fr) minmax(230px,42vh);grid-template-rows:minmax(170px,1fr) minmax(230px,42dvh); }
       .room-layout.chat-hidden { grid-template-rows:minmax(0,1fr); }
       .room-main { padding:10px;gap:8px; }
+      .media-bar { gap:5px; }
+      .media-bar input { height:42px;padding-inline:8px;font-size:16px; }
+      .media-bar .btn { min-height:42px;padding-inline:9px;font-size:10px; }
       .room-stage { min-height:0; }
-      .participant-strip { display:none; }
+      .participant-strip { display:flex;max-height:56px; }
       .room-controls { flex:none;gap:6px; }
       .room-control { min-width:44px;padding:0 10px;height:44px; }
       .room-control span { display:none; }
+      .reaction-toolbar { inset-inline-start:6px;top:6px;gap:1px;padding:3px; }
+      .reaction-toolbar button { width:34px;height:36px;font-size:17px; }
+      .room-stage:not(.has-shared-media) .stream-badge { top:49px;right:6px; }
       .chat-panel { border-inline-start:0;border-top:1px solid var(--line); }
       .chat-messages { padding:8px 12px; }
       .room-top { height:48px;padding:0 11px; }
@@ -337,7 +414,7 @@
     }
     @media(max-width:390px) { .brand { gap:6px;font-size:15px; }.brand-mark { width:30px;height:30px; }.nav-actions { gap:6px; }.nav-actions .btn { padding-inline:8px;font-size:10px; }.language-switcher select { min-width:70px;width:70px; } }
     @media(max-height:620px) and (max-width:700px) { .room-layout { grid-template-rows:minmax(150px,1fr) minmax(82px,22vh);grid-template-rows:minmax(150px,1fr) minmax(82px,22dvh); }.room-top { height:42px; }.room-controls { gap:4px; }.room-control { height:44px;min-width:44px; } }
-    @media(max-height:620px) and (min-width:701px) and (max-width:950px) { .room-top { height:44px; }.room-main { padding:8px;gap:8px; }.room-stage { min-height:0; }.participant-strip { display:none; }.room-controls { flex:none;gap:4px; }.room-control { height:44px;min-height:44px; } }
+    @media(max-height:620px) and (min-width:701px) and (max-width:950px) { .room-top { height:44px; }.room-main { padding:8px;gap:8px; }.room-stage { min-height:0; }.participant-strip { max-height:44px; }.room-controls { flex:none;gap:4px; }.room-control { height:44px;min-height:44px; } }
     @media(hover:none) { .btn:hover,.room-card:hover,.activity-card:hover { transform:none; } }
     @media(prefers-reduced-motion:reduce) { *,*:before,*:after { scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important; } }
   </style>
@@ -348,7 +425,7 @@
       <a class="brand" href="#top" aria-label="سامیکا، صفحهٔ اصلی"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12h.01M12 12h.01M15 12h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></span>سامیکا <span style="font-size:11px;color:#aaa4be">Samika</span></a>
       <nav class="nav" aria-label="ناوبری اصلی"><a href="#activities">امکانات</a><a href="#rooms">اتاق‌ها</a><a href="#how">چطور کار می‌کند؟</a><a href="#faq">پرسش‌ها</a></nav>
       <label class="language-switcher"><span class="sr-only">زبان سایت</span><select id="languageSelect" aria-label="زبان سایت"><option value="fa">فارسی</option><option value="en">English</option><option value="tr">Türkçe</option><option value="ar">العربية</option><option value="fr">Français</option></select></label>
-      <div class="nav-actions"><button class="btn btn-ghost" data-open-create>ورود به اتاق</button><button class="btn btn-primary" data-open-create>ساخت اتاق رایگان</button></div>
+      <div class="nav-actions"><button class="btn btn-ghost" data-open-create>ورود به اتاق</button><button class="btn btn-ghost install-app-button" id="installAppButton" type="button" aria-label="نصب سامیکا"><span aria-hidden="true">↓</span><span>نصب</span></button><button class="btn btn-primary" data-open-create>ساخت اتاق رایگان</button></div>
     </div>
   </header>
 
@@ -358,7 +435,7 @@
         <div class="eyebrow"><span class="eyebrow-dot"></span>دورهمی، هرجا که هستید</div>
         <h1>فاصله‌ها را کم کن،<br><span class="gradient-text">یک اتاق بساز.</span></h1>
         <p>فیلم ببینید، بازی کنید و گپ بزنید؛ همه در یک پاتوق آنلاین که با یک لینک، دوستانتان را دور هم جمع می‌کند.</p>
-        <div class="hero-buttons"><button class="btn btn-primary btn-lg" data-open-create>اتاق خودم را بساز <span aria-hidden="true">←</span></button><a class="btn btn-ghost btn-lg" href="#rooms">دیدن اتاق‌های عمومی</a></div>
+        <div class="hero-buttons"><button class="btn btn-primary btn-lg" data-open-create>اتاق خودم را بساز <span aria-hidden="true">←</span></button><a class="btn btn-ghost btn-lg" href="#rooms">دیدن ایده‌های دورهمی</a></div>
         <div class="under-note"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m4 10 4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>رایگان برای شروع <span>·</span> بدون نصب برنامه</div>
         <div class="metrics">
           <div class="metric"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m10 9 5 3-5 3V9Z" fill="currentColor"/></svg></span><div><strong>تماشای هم‌زمان</strong><span>یک قاب برای همه</span></div></div>
@@ -392,6 +469,8 @@
     </section>
 
     <div class="section-divider"></div>
+    <section class="wrap recent-rooms" id="recentRoomsSection" hidden aria-labelledby="recentRoomsTitle"><div class="recent-rooms-heading"><h2 id="recentRoomsTitle">اتاق‌های اخیر</h2><button class="text-button" id="clearRecentRooms" type="button">پاک‌کردن فهرست</button></div><div class="recent-rooms-list" id="recentRoomsList"></div></section>
+
     <section class="wrap section" id="activities">
       <div class="section-head"><div><span class="section-kicker">همه‌چیز یک‌جا</span><h2>برای باهم‌بودن، بهانه کم نمی‌آریم</h2></div><p>یک لینک بفرست و همان‌جا هر کاری دلتان می‌خواهد انجام دهید.</p></div>
       <div class="activity-grid">
@@ -404,15 +483,15 @@
 
     <div class="section-divider"></div>
     <section class="wrap section lobby" id="rooms">
-      <div class="section-head"><div><span class="section-kicker">پاتوق‌ها</span><h2>یک اتاق انتخاب کن و سلام بده</h2></div><div class="lobby-tools"><label class="search-box"><svg viewBox="0 0 24 24" fill="none"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input id="roomSearch" type="search" placeholder="جست‌وجوی اتاق..." aria-label="جست‌وجوی اتاق"></label><button class="btn btn-primary" data-open-create>+ ساخت اتاق</button></div></div>
+      <div class="section-head"><div><span class="section-kicker">ایده‌های دورهمی</span><h2>یک حال‌وهوا انتخاب کن و اتاق خصوصی بساز</h2></div><div class="lobby-tools"><label class="search-box"><svg viewBox="0 0 24 24" fill="none"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input id="roomSearch" type="search" placeholder="جست‌وجوی ایده..." aria-label="جست‌وجوی ایده"></label><button class="btn btn-primary" data-open-create>+ ساخت اتاق</button></div></div>
       <div class="filter-row" role="group" aria-label="دسته‌بندی اتاق‌ها"><button class="filter active" data-filter="all">همه</button><button class="filter" data-filter="movie">فیلم و ویدئو</button><button class="filter" data-filter="game">بازی</button><button class="filter" data-filter="chat">گپ‌وگفت</button></div>
       <div class="rooms-grid" id="roomsGrid">
-        <article class="room-card" data-category="movie" data-name="شب فیلم و پاپ کورن"><div class="room-cover cover-movie"><span class="room-tag">🎬 تماشای فیلم</span><span class="online-dot"><i></i> ۱۲ نفر</span><span class="cover-word">MOVIE<br>NIGHT</span></div><div class="room-info"><h3>شب فیلم و پاپ‌کورن</h3><p>یک فیلم خوب، حال خوب‌تر 🍿</p><div class="room-footer"><span class="room-host"><i class="host-avatar">س</i>ساختهٔ سارا</span><button class="join-link" data-join="شب فیلم و پاپ‌کورن">ورود به اتاق ←</button></div></div></article>
-        <article class="room-card" data-category="game" data-name="اتاق بازی نیمه شب"><div class="room-cover cover-game"><span class="room-tag">🎮 بازی گروهی</span><span class="online-dot"><i></i> ۶ نفر</span><span class="cover-word">GAME<br>ON!</span></div><div class="room-info"><h3>اتاق بازی نیمه‌شب</h3><p>بازنده دور بعدی اسنک میاره 😄</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#9fd4be">آ</i>ساختهٔ آرمان</span><button class="join-link" data-join="اتاق بازی نیمه‌شب">ورود به اتاق ←</button></div></div></article>
-        <article class="room-card" data-category="chat" data-name="کافه گفتگو"><div class="room-cover cover-music"><span class="room-tag">☕ گپ‌وگفت</span><span class="online-dot"><i></i> ۴ نفر</span><span class="cover-word">SLOW<br>DOWN</span></div><div class="room-info"><h3>کافهٔ گفت‌وگو</h3><p>یه چای بردار، از روزت بگو ☕</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#e5c084">م</i>ساختهٔ مهسا</span><button class="join-link" data-join="کافهٔ گفت‌وگو">ورود به اتاق ←</button></div></div></article>
-        <article class="room-card" data-category="chat" data-name="دورهمی کتابخوانی"><div class="room-cover cover-chat"><span class="room-tag">📚 کتاب‌خوانی</span><span class="online-dot"><i></i> ۸ نفر</span><span class="cover-word">PAGE<br>TURNERS</span></div><div class="room-info"><h3>دورهمی کتاب‌خوانی</h3><p>این هفته: داستان‌های کوتاه</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#b9c1e9">ر</i>ساختهٔ رها</span><button class="join-link" data-join="دورهمی کتاب‌خوانی">ورود به اتاق ←</button></div></div></article>
-        <article class="room-card" data-category="game" data-name="بردگیم و خنده"><div class="room-cover cover-board"><span class="room-tag">🃏 بردگیم</span><span class="online-dot"><i></i> ۵ نفر</span><span class="cover-word">PLAY<br>TOGETHER</span></div><div class="room-info"><h3>بردگیم و خنده</h3><p>قانون اول: زیادی جدی نگیریم!</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#d1ade7">ن</i>ساختهٔ نیما</span><button class="join-link" data-join="بردگیم و خنده">ورود به اتاق ←</button></div></div></article>
-        <article class="room-card" data-category="movie" data-name="موسیقی برای تمرکز"><div class="room-cover cover-chill"><span class="room-tag">🎧 موسیقی</span><span class="online-dot"><i></i> ۳ نفر</span><span class="cover-word">LOFI<br>LOUNGE</span></div><div class="room-info"><h3>موسیقی برای تمرکز</h3><p>صدای کم، تمرکز بیشتر 🌿</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#acd099">ک</i>ساختهٔ کیان</span><button class="join-link" data-join="موسیقی برای تمرکز">ورود به اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="movie" data-name="شب فیلم و پاپ کورن"><div class="room-cover cover-movie"><span class="room-tag">🎬 تماشای فیلم</span><span class="online-dot"><i></i> پیشنهاد</span><span class="cover-word">MOVIE<br>NIGHT</span></div><div class="room-info"><h3>شب فیلم و پاپ‌کورن</h3><p>یک فیلم خوب، حال خوب‌تر 🍿</p><div class="room-footer"><span class="room-host"><i class="host-avatar">س</i>ساختهٔ سارا</span><button class="join-link" data-join="شب فیلم و پاپ‌کورن">ساخت اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="game" data-name="اتاق بازی نیمه شب"><div class="room-cover cover-game"><span class="room-tag">🎮 بازی گروهی</span><span class="online-dot"><i></i> پیشنهاد</span><span class="cover-word">GAME<br>ON!</span></div><div class="room-info"><h3>اتاق بازی نیمه‌شب</h3><p>بازنده دور بعدی اسنک میاره 😄</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#9fd4be">آ</i>ساختهٔ آرمان</span><button class="join-link" data-join="اتاق بازی نیمه‌شب">ساخت اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="chat" data-name="کافه گفتگو"><div class="room-cover cover-music"><span class="room-tag">☕ گپ‌وگفت</span><span class="online-dot"><i></i> پیشنهاد</span><span class="cover-word">SLOW<br>DOWN</span></div><div class="room-info"><h3>کافهٔ گفت‌وگو</h3><p>یه چای بردار، از روزت بگو ☕</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#e5c084">م</i>ساختهٔ مهسا</span><button class="join-link" data-join="کافهٔ گفت‌وگو">ساخت اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="chat" data-name="دورهمی کتابخوانی"><div class="room-cover cover-chat"><span class="room-tag">📚 کتاب‌خوانی</span><span class="online-dot"><i></i> پیشنهاد</span><span class="cover-word">PAGE<br>TURNERS</span></div><div class="room-info"><h3>دورهمی کتاب‌خوانی</h3><p>این هفته: داستان‌های کوتاه</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#b9c1e9">ر</i>ساختهٔ رها</span><button class="join-link" data-join="دورهمی کتاب‌خوانی">ساخت اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="game" data-name="بردگیم و خنده"><div class="room-cover cover-board"><span class="room-tag">🃏 بردگیم</span><span class="online-dot"><i></i> پیشنهاد</span><span class="cover-word">PLAY<br>TOGETHER</span></div><div class="room-info"><h3>بردگیم و خنده</h3><p>قانون اول: زیادی جدی نگیریم!</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#d1ade7">ن</i>ساختهٔ نیما</span><button class="join-link" data-join="بردگیم و خنده">ساخت اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="movie" data-name="موسیقی برای تمرکز"><div class="room-cover cover-chill"><span class="room-tag">🎧 موسیقی</span><span class="online-dot"><i></i> پیشنهاد</span><span class="cover-word">LOFI<br>LOUNGE</span></div><div class="room-info"><h3>موسیقی برای تمرکز</h3><p>صدای کم، تمرکز بیشتر 🌿</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#acd099">ک</i>ساختهٔ کیان</span><button class="join-link" data-join="موسیقی برای تمرکز">ساخت اتاق ←</button></div></div></article>
       </div>
       <div class="empty-state" id="emptyState">اتاقی با این مشخصات پیدا نکردیم. عبارت دیگری را امتحان کن.</div>
     </section>
@@ -424,17 +503,19 @@
 
     <section class="wrap"><div class="cta"><div><h2>جای همه دور هم خالیه؟</h2><p>اتاقت رو بساز و لینک دعوت رو همین الان بفرست.</p></div><button class="btn btn-primary btn-lg" data-open-create>شروع یک دورهمی <span aria-hidden="true">←</span></button></div></section>
 
-    <section class="wrap faq" id="faq"><div class="faq-intro"><span class="section-kicker">سوال‌های پرتکرار</span><h2>چیزهایی که<br>شاید بپرسی</h2><p>پاسخ چند سوال برای شروع راحت‌تر.</p></div><div><details><summary>برای استفاده باید برنامه نصب کنم؟</summary><p>سامیکا در مرورگر اجرا می‌شود و نصب نمی‌خواهد. برای تماس زنده، فایل‌ها را روی localhost یا یک سایت HTTPS اجرا کنید و لینک اتاق را برای دوستان بفرستید.</p></details><details><summary>می‌توانم اتاق را خصوصی کنم؟</summary><p>اتاق با یک کد تصادفی ساخته می‌شود و ورود از طریق لینک دعوت است. در این نسخه فهرست اتاق‌های عمومی، حساب کاربری یا رمز جداگانه وجود ندارد.</p></details><details><summary>آیا دوستانم تصویر و صدای هم را می‌بینند؟</summary><p>بله. بعد از ورود به اتاق، دکمهٔ میکروفن یا دوربین را بزنید و اجازهٔ مرورگر را بدهید. رسانه مستقیم با WebRTC بین مرورگرها منتقل می‌شود؛ سامیکا آن را ضبط نمی‌کند.</p></details><details><summary>همه می‌توانند ویدئو را هم‌زمان تماشا کنند؟</summary><p>برای نمایش ویدئو، شیر اسکرین را بزنید و زبانه یا پنجرهٔ ویدئو را انتخاب کنید. صدای زبانه را هم در پنجرهٔ اشتراک‌گذاری فعال کنید. پخش‌کنندهٔ همگام‌شدهٔ داخلی هنوز در این نسخه نیست.</p></details></div></section>
+    <section class="wrap faq" id="faq"><div class="faq-intro"><span class="section-kicker">سوال‌های پرتکرار</span><h2>چیزهایی که<br>شاید بپرسی</h2><p>پاسخ چند سوال برای شروع راحت‌تر.</p></div><div><details><summary>چطور سامیکا را روی گوشی نصب کنم؟</summary><p>نصب اختیاری است. در Safari آیفون یا آیپد، اشتراک‌گذاری و سپس افزودن به صفحهٔ اصلی را بزنید. در Chrome از منوی ⋮ گزینهٔ نصب یا افزودن به صفحهٔ اصلی را انتخاب کنید. برای تماس زنده اینترنت لازم است.</p></details><details><summary>می‌توانم اتاق را خصوصی کنم؟</summary><p>برای هر اتاق یک کد دعوت تصادفی و غیرقابل حدس ساخته می‌شود و فهرست عمومی وجود ندارد. هرکس لینک دعوت را داشته باشد می‌تواند وارد شود؛ لینک را فقط برای افراد مورداعتماد بفرستید.</p></details><details><summary>آیا دوستانم تصویر و صدای هم را می‌بینند؟</summary><p>بله. بعد از ورود به اتاق، دکمهٔ میکروفن یا دوربین را بزنید و اجازهٔ مرورگر را بدهید. رسانه مستقیم با WebRTC بین مرورگرها منتقل می‌شود؛ سامیکا آن را ضبط نمی‌کند.</p></details><details><summary>همه می‌توانند ویدئو را هم‌زمان تماشا کنند؟</summary><p>لینک مستقیم HTTPS ویدئوی MP4 یا WebM، یا لینک YouTube را در نوار بالای اتاق وارد کنید. همه می‌توانند پخش را کنترل و ویدئو را جلو یا عقب ببرند. هر دستگاه ویدئو را جداگانه از منبع اصلی می‌گیرد؛ سرعت و تأخیر به اینترنت و خود سایت ویدئو بستگی دارد.</p></details></div></section>
   </main>
 
   <footer><div class="wrap footer-inner"><a class="footer-brand" href="#top"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>سامیکا · Samika</a><span>تهیه‌شده توسط سام کاظمی ✦</span><div class="footer-links"><a href="#activities">امکانات</a><a href="#rooms">اتاق‌ها</a><a href="#faq">پرسش‌ها</a></div></div></footer>
 
-  <div class="modal-backdrop" id="createBackdrop" aria-hidden="true"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="createTitle"><button class="close-x" data-close-create aria-label="بستن">×</button><h2 id="createTitle">اتاقت رو بساز ✨</h2><p>یک اسم انتخاب کن؛ دورهمی از همین‌جا شروع می‌شه.</p><form id="createForm"><label class="field-label" for="roomName">اسم اتاق</label><input class="text-input" id="roomName" maxlength="42" placeholder="مثلاً: جمعه‌شب با بچه‌ها" autocomplete="off"><label class="field-label" for="displayName" style="margin-top:14px">اسم نمایشی شما</label><input class="text-input" id="displayName" maxlength="28" placeholder="مثلاً: سام" autocomplete="nickname"><span class="field-label" style="margin-top:15px">چه کسانی می‌تونن وارد بشن؟</span><div class="privacy-options"><label class="privacy-option selected"><input type="radio" name="privacy" value="private" checked> خصوصی · فقط با لینک</label><label class="privacy-option"><input type="radio" name="privacy" value="public"> عمومی · قابل کشف</label></div><button class="btn btn-primary btn-lg" type="submit">ساخت اتاق و ادامه ←</button></form></section></div>
+    <div class="modal-backdrop" id="createBackdrop" aria-hidden="true"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="createTitle"><button class="close-x" data-close-create aria-label="بستن">×</button><h2 id="createTitle">اتاقت رو بساز ✨</h2><p>اتاق خصوصی ساخته می‌شود و فقط با لینک دعوت می‌توان واردش شد.</p><form id="createForm"><label class="field-label" for="roomName">اسم اتاق</label><input class="text-input" id="roomName" maxlength="42" placeholder="مثلاً: جمعه‌شب با بچه‌ها" autocomplete="off"><label class="field-label" for="displayName" style="margin-top:14px">نام کاربری شما (اجباری)</label><input class="text-input" id="displayName" maxlength="28" placeholder="مثلاً: سام" autocomplete="nickname" required><button class="btn btn-primary btn-lg" type="submit">ساخت اتاق خصوصی و ادامه ←</button></form></section></div>
 
-  <div class="modal-backdrop" id="roomBackdrop" aria-hidden="true"><section class="dialog room-modal" role="dialog" aria-modal="true" aria-label="اتاق سامیکا"><div class="room-top"><div class="room-top-left"><span class="brand-mark" style="width:27px;height:27px;border-radius:9px"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><span class="room-top-title" id="activeRoomTitle">اتاق دورهمی</span><span class="room-live" id="networkStatus">● در حال اتصال…</span></div><div class="room-top-right"><span class="room-id" id="roomId">کد اتاق —</span><button class="btn btn-ghost" style="min-height:31px;padding:0 10px;font-size:9px" id="inviteBtn">کپی لینک دعوت</button><button class="close-x" id="closeRoom" aria-label="خروج از اتاق" style="position:static">×</button></div></div><div class="room-layout"><div class="room-main"><div class="room-stage"><svg class="room-illustration" viewBox="0 0 900 540" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="roomwall" x2="0" y2="1"><stop stop-color="#514568"/><stop offset="1" stop-color="#28263d"/></linearGradient><linearGradient id="roomfloor" x2="0" y2="1"><stop stop-color="#433747"/><stop offset="1" stop-color="#241e2e"/></linearGradient><radialGradient id="roomlight"><stop stop-color="#ffcf96" stop-opacity=".8"/><stop offset="1" stop-color="#ffcf96" stop-opacity="0"/></radialGradient></defs><rect width="900" height="540" fill="url(#roomwall)"/><rect y="380" width="900" height="160" fill="url(#roomfloor)"/><circle cx="660" cy="230" r="240" fill="url(#roomlight)" opacity=".28"/><rect x="567" y="68" width="245" height="240" rx="8" fill="#35445e" stroke="#ddc2a5" stroke-width="12"/><path d="M580 242 650 160l48 46 38-65 65 72v80H580Z" fill="#363653"/><rect x="690" y="80" width="4" height="220" fill="#dfc3a4"/><ellipse cx="455" cy="438" rx="284" ry="72" fill="#9b7082" opacity=".28"/><rect x="256" y="296" width="389" height="145" rx="35" fill="#9d6c78"/><rect x="233" y="325" width="65" height="110" rx="23" fill="#91647a"/><rect x="605" y="325" width="65" height="110" rx="23" fill="#835d76"/><path d="M319 304v125m126-125v124m117-124v125" stroke="#e2af9c" stroke-opacity=".25" stroke-width="3"/><path d="M720 383V284m0 12-37-24m37 13 31-34m-31 21 42-2" stroke="#718768" stroke-width="11" stroke-linecap="round"/><path d="M681 385h83l-11 15h-61Z" fill="#705066"/><path d="M695 305c-32-25-18-58 6-48 10-34 45-23 39 1 28-15 46 20 19 37" fill="#7e9877"/></svg><div class="video-grid" id="videoGrid"></div><span class="stream-badge" id="roomModeBadge">✦ سامیکا · ارتباط زنده</span><div class="stage-center" id="stageEmpty"><span class="avatar">س</span><strong>خوش اومدی به سامیکا!</strong><small>میکروفن یا دوربین را روشن کن و دوستات را دعوت کن</small></div></div><div class="participant-strip" id="participantStrip"></div><div class="room-controls"><button class="room-control" data-device="audio" aria-label="روشن و خاموش کردن میکروفن"><svg viewBox="0 0 24 24" fill="none"><rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.7"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3m-4 0h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>روشن‌کردن میکروفن</span></button><button class="room-control" data-device="video" aria-label="روشن و خاموش کردن دوربین"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 5-3v10l-5-3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>روشن‌کردن دوربین</span></button><button class="room-control" data-share aria-label="شروع یا توقف اشتراک‌گذاری صفحه"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8m-4-4v4m-4-9 2.5-2.5L13 11l2-2 2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>شیر اسکرین</span></button><button class="room-control" data-toggle="chat" aria-label="نمایش چت"><svg viewBox="0 0 24 24" fill="none"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.8-3.3A7.5 7.5 0 1 1 20 11.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M8 11h.01M12 11h.01M16 11h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span>چت</span></button><button class="room-control leave" id="leaveRoom" aria-label="خروج"><span>خروج</span><svg viewBox="0 0 24 24" fill="none"><path d="M10 17l5-5-5-5m5 5H3m8-9h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div><aside class="chat-panel" id="chatPanel"><div class="chat-head"><span>گپ دورهمی</span><small id="chatStatus">اتاق سامیکا</small></div><div class="chat-messages" id="chatMessages"><div class="system-message">به اتاق خوش اومدی! دوستات رو دعوت کن 👋</div></div><form class="chat-compose" id="chatForm"><input id="chatInput" maxlength="250" placeholder="یه چیزی بنویس..." aria-label="پیام چت"><button type="submit" aria-label="فرستادن پیام"><svg viewBox="0 0 24 24" fill="none"><path d="m21 3-7.2 18-3.7-7.1L3 10.2 21 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.1 13.9 4.5-4.5" stroke="currentColor" stroke-width="1.7"/></svg></button></form></aside></div></section></div>
+  <div class="modal-backdrop" id="joinBackdrop" aria-hidden="true"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="joinTitle"><h2 id="joinTitle">ورود به اتاق</h2><p id="joinRoomDescription">برای ورود، یک نام کاربری وارد کن.</p><form id="joinForm"><label class="field-label" for="joinDisplayName">نام کاربری شما (اجباری)</label><input class="text-input" id="joinDisplayName" maxlength="28" placeholder="مثلاً: سام" autocomplete="nickname" required><button class="btn btn-primary btn-lg" type="submit">ورود به اتاق خصوصی ←</button></form></section></div>
+
+  <div class="modal-backdrop" id="roomBackdrop" aria-hidden="true"><section class="dialog room-modal" role="dialog" aria-modal="true" aria-label="اتاق سامیکا"><div class="room-top"><div class="room-top-left"><span class="brand-mark" style="width:27px;height:27px;border-radius:9px"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><span class="room-top-title" id="activeRoomTitle">اتاق دورهمی</span><span class="room-live" id="networkStatus">● در حال اتصال…</span></div><div class="room-top-right"><span class="room-id" id="roomId">کد اتاق —</span><button class="btn btn-ghost" style="min-height:31px;padding:0 10px;font-size:9px" id="inviteBtn">کپی لینک دعوت</button><button class="close-x" id="closeRoom" aria-label="خروج از اتاق" style="position:static">×</button></div></div><div class="room-layout"><div class="room-main"><form class="media-bar" id="mediaForm"><input id="mediaUrl" type="url" inputmode="url" placeholder="لینک YouTube یا ویدئوی مستقیم MP4/WebM" aria-label="لینک ویدئو برای همه" required><button class="btn btn-primary" type="submit">پخش برای همه</button></form><div class="room-stage"><svg class="room-illustration" viewBox="0 0 900 540" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="roomwall" x2="0" y2="1"><stop stop-color="#514568"/><stop offset="1" stop-color="#28263d"/></linearGradient><linearGradient id="roomfloor" x2="0" y2="1"><stop stop-color="#433747"/><stop offset="1" stop-color="#241e2e"/></linearGradient><radialGradient id="roomlight"><stop stop-color="#ffcf96" stop-opacity=".8"/><stop offset="1" stop-color="#ffcf96" stop-opacity="0"/></radialGradient></defs><rect width="900" height="540" fill="url(#roomwall)"/><rect y="380" width="900" height="160" fill="url(#roomfloor)"/><circle cx="660" cy="230" r="240" fill="url(#roomlight)" opacity=".28"/><rect x="567" y="68" width="245" height="240" rx="8" fill="#35445e" stroke="#ddc2a5" stroke-width="12"/><path d="M580 242 650 160l48 46 38-65 65 72v80H580Z" fill="#363653"/><rect x="690" y="80" width="4" height="220" fill="#dfc3a4"/><ellipse cx="455" cy="438" rx="284" ry="72" fill="#9b7082" opacity=".28"/><rect x="256" y="296" width="389" height="145" rx="35" fill="#9d6c78"/><rect x="233" y="325" width="65" height="110" rx="23" fill="#91647a"/><rect x="605" y="325" width="65" height="110" rx="23" fill="#835d76"/><path d="M319 304v125m126-125v124m117-124v125" stroke="#e2af9c" stroke-opacity=".25" stroke-width="3"/><path d="M720 383V284m0 12-37-24m37 13 31-34m-31 21 42-2" stroke="#718768" stroke-width="11" stroke-linecap="round"/><path d="M681 385h83l-11 15h-61Z" fill="#705066"/><path d="M695 305c-32-25-18-58 6-48 10-34 45-23 39 1 28-15 46 20 19 37" fill="#7e9877"/></svg><div class="video-grid" id="videoGrid"></div><div class="shared-player" id="sharedPlayer" hidden><button class="media-clear" id="mediaClear" type="button" aria-label="بستن ویدئوی مشترک" title="بستن ویدئوی مشترک">×</button><div class="shared-surface"><video id="sharedVideo" playsinline webkit-playsinline preload="metadata" hidden></video><div id="youtubePlayer" hidden></div></div><div class="shared-controls"><button class="shared-control" id="mediaPlay" type="button" aria-label="پخش و توقف" title="پخش / توقف">▶</button><span class="shared-time" id="mediaCurrent">0:00</span><input id="mediaSeek" type="range" min="0" max="1000" value="0" aria-label="جلو یا عقب بردن ویدئو"><span class="shared-time" id="mediaDuration">0:00</span><button class="shared-control" id="mediaFullscreen" type="button" aria-label="تمام‌صفحه" title="تمام‌صفحه">⛶</button></div></div><div class="reaction-toolbar" id="reactionToolbar" role="group" aria-label="واکنش‌های سریع"><button type="button" data-reaction="😂" aria-label="خنده">😂</button><button type="button" data-reaction="😭" aria-label="گریه">😭</button><button type="button" data-reaction="❤️" aria-label="قلب">❤️</button><button type="button" data-reaction="😮" aria-label="تعجب">😮</button><button type="button" data-reaction="🔥" aria-label="آتش">🔥</button><button type="button" data-reaction="👏" aria-label="آفرین">👏</button></div><span class="stream-badge" id="roomModeBadge">✦ سامیکا · ارتباط زنده</span><div class="stage-center" id="stageEmpty"><span class="avatar">س</span><strong>خوش اومدی به سامیکا!</strong><small>میکروفن یا دوربین را روشن کن و دوستات را دعوت کن</small></div></div><div class="participant-strip" id="participantStrip"></div><div class="room-controls"><button class="room-control" data-device="audio" aria-label="روشن و خاموش کردن میکروفن"><svg viewBox="0 0 24 24" fill="none"><rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.7"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3m-4 0h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>روشن‌کردن میکروفن</span></button><button class="room-control" data-device="video" aria-label="روشن و خاموش کردن دوربین"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 5-3v10l-5-3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>روشن‌کردن دوربین</span></button><button class="room-control" data-share aria-label="شروع یا توقف اشتراک‌گذاری صفحه"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8m-4-4v4m-4-9 2.5-2.5L13 11l2-2 2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>شیر اسکرین</span></button><button class="room-control" id="gameToggle" aria-label="بازی‌های گروهی"><span aria-hidden="true">🎮</span><span>بازی</span></button><button class="room-control" data-toggle="chat" aria-label="نمایش چت"><svg viewBox="0 0 24 24" fill="none"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.8-3.3A7.5 7.5 0 1 1 20 11.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M8 11h.01M12 11h.01M16 11h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span>چت</span></button><button class="room-control leave" id="leaveRoom" aria-label="خروج"><span>خروج</span><svg viewBox="0 0 24 24" fill="none"><path d="M10 17l5-5-5-5m5 5H3m8-9h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div><aside class="chat-panel" id="chatPanel"><div class="chat-head"><span>گپ دورهمی</span><small id="chatStatus">اتاق سامیکا</small></div><section class="game-panel" id="gamePanel" hidden><h3>بازی‌های گروهی</h3><p>همهٔ اعضای اتاق می‌توانند بازی کنند.</p><div class="game-launcher"><button class="btn btn-ghost" type="button" data-game-start="tic">❌⭕ دوز آنلاین</button><button class="btn btn-ghost" type="button" data-game-start="guess">🔢 حدس عدد</button><button class="btn btn-ghost" type="button" data-game-start="challenge">🎲 چالش خنده‌دار</button></div><div id="gameContent"></div></section><div class="chat-messages" id="chatMessages"><div class="system-message">به اتاق خوش اومدی! دوستات رو دعوت کن 👋</div></div><form class="chat-compose" id="chatForm"><input id="chatInput" maxlength="250" placeholder="یه چیزی بنویس..." aria-label="پیام چت"><button type="submit" aria-label="فرستادن پیام"><svg viewBox="0 0 24 24" fill="none"><path d="m21 3-7.2 18-3.7-7.1L3 10.2 21 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.1 13.9 4.5-4.5" stroke="currentColor" stroke-width="1.7"/></svg></button></form></aside></div></section></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="i18n.js?v=20261028-3"></script>
-  <script src="app.js?v=20261028-3"></script>
+  <script src="i18n.js?v=20261028-8"></script>
+  <script src="app.js?v=20261028-8"></script>
 </body>
 </html>

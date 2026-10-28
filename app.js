@@ -11,16 +11,18 @@
   }
   const createBackdrop = $("#createBackdrop");
   const roomBackdrop = $("#roomBackdrop");
+  const joinBackdrop = $("#joinBackdrop");
   const toast = $("#toast");
+  const recentRoomsKey = "samika-recent-rooms";
   const peerConnections = new Map();
   const peerNames = new Map();
   const remoteStreams = new Map();
   const videoTiles = new Map();
   const videoModes = new Map();
   const signalQueues = new Map();
+  let roomAdmins = new Set();
 
   let activeFilter = "all";
-  let selectedPrivacy = "private";
   let toastTimer;
   let activeRoomName = t("اتاق سامیکا");
   let activeRoomId = "";
@@ -33,12 +35,20 @@
   let stoppingShare = false;
   let intentionalLeave = false;
   let chatVisible = true;
+  let pendingRoom = null;
+  let sharedMedia = null;
+  let sharedGame = null;
+  let youtubePlayer = null;
+  let youtubeApiPromise = null;
+  let seekingMedia = false;
+  let mediaAutoplayBlocked = false;
+  let serverClockOffset = 0;
+  let deferredInstallPrompt = null;
 
   try { displayName = localStorage.getItem("samika-display-name") || ""; } catch {}
-  $("#displayName").value = displayName;
 
-  function announce(message) {
-    setLocalizedText(toast, message);
+  function announce(message, values) {
+    setLocalizedText(toast, message, values);
     toast.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
@@ -55,21 +65,206 @@
   }
   function randomRoomCode() {
     const alphabet = "23456789abcdefghjkmnpqrstuvwxyz";
-    const bytes = crypto.getRandomValues(new Uint8Array(8));
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
     return [...bytes].map(byte => alphabet[byte % alphabet.length]).join("");
-  }
-  function roomCodeForName(name) {
-    let hash = 2166136261;
-    for (let i = 0; i < name.length; i++) hash = Math.imul(hash ^ name.charCodeAt(i), 16777619);
-    return `public-${(hash >>> 0).toString(36)}`;
   }
   function getDisplayName() {
     const input = $("#displayName").value.trim();
-    if (input) displayName = input.slice(0, 28);
-    if (!displayName) displayName = t("مهمان {{n}}", { n: Math.floor(Math.random() * 90) + 10 });
-    try { localStorage.setItem("samika-display-name", displayName); } catch {}
+    displayName = input.slice(0, 28);
+    if (displayName) try { localStorage.setItem("samika-display-name", displayName); } catch {}
     return displayName;
   }
+  function parseSharedMedia(value) {
+    let url;
+    try { url = new URL(value.trim()); } catch { return null; }
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    if (["youtube.com", "m.youtube.com", "music.youtube.com", "youtube-nocookie.com", "youtu.be"].includes(host)) {
+      const id = host === "youtu.be" ? url.pathname.split("/").filter(Boolean)[0]
+        : (url.searchParams.get("v") || url.pathname.match(/^\/(?:embed|shorts|live)\/([^/?]+)/)?.[1]);
+      return id && /^[a-zA-Z0-9_-]{11}$/.test(id) ? { url: `https://www.youtube.com/watch?v=${id}`, kind: "youtube", videoId: id } : null;
+    }
+    return /\.(mp4|m4v|webm|ogv|mov|m3u8)$/i.test(url.pathname) ? { url: url.href, kind: "direct" } : null;
+  }
+  function loadYouTubeApi() {
+    if (window.YT?.Player) return Promise.resolve(window.YT);
+    if (youtubeApiPromise) return youtubeApiPromise;
+    youtubeApiPromise = new Promise((resolve, reject) => {
+      const previousReady = window.onYouTubeIframeAPIReady;
+      const timeout = setTimeout(() => reject(new Error("YouTube player did not load")), 15000);
+      window.onYouTubeIframeAPIReady = () => {
+        clearTimeout(timeout);
+        if (typeof previousReady === "function") previousReady();
+        resolve(window.YT);
+      };
+      let script = document.querySelector('script[src="https://www.youtube.com/iframe_api"]');
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "https://www.youtube.com/iframe_api";
+        script.onerror = () => { clearTimeout(timeout); reject(new Error("YouTube player could not load")); };
+        document.head.append(script);
+      }
+    });
+    return youtubeApiPromise;
+  }
+  function formatMediaTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+    const total = Math.floor(seconds);
+    return total >= 3600 ? `${Math.floor(total / 3600)}:${String(Math.floor(total / 60) % 60).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
+      : `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+  }
+  function mediaDuration() {
+    if (sharedMedia?.kind === "youtube") return youtubePlayer?.getDuration?.() || 0;
+    return $("#sharedVideo").duration || 0;
+  }
+  function actualMediaTime() {
+    if (sharedMedia?.kind === "youtube") return youtubePlayer?.getCurrentTime?.() || 0;
+    return $("#sharedVideo").currentTime || 0;
+  }
+  function targetMediaTime(state = sharedMedia) {
+    if (!state) return 0;
+    return Math.max(0, Number(state.currentTime) + (state.playing ? Math.max(0, Date.now() + serverClockOffset - Number(state.updatedAt || Date.now())) / 1000 : 0));
+  }
+  function setMediaPlayIcon(playing) {
+    const button = $("#mediaPlay");
+    button.textContent = playing ? "Ⅱ" : "▶";
+    button.setAttribute("aria-label", t(playing ? "توقف ویدئو" : "پخش ویدئو"));
+    button.title = t(playing ? "توقف ویدئو" : "پخش ویدئو");
+  }
+  function updateMediaControls() {
+    const duration = mediaDuration();
+    const current = actualMediaTime();
+    $("#mediaCurrent").textContent = formatMediaTime(current);
+    $("#mediaDuration").textContent = formatMediaTime(duration);
+    if (duration > 0 && !seekingMedia) $("#mediaSeek").value = String(Math.round(Math.min(1, current / duration) * 1000));
+    const playing = sharedMedia?.kind === "youtube" ? youtubePlayer?.getPlayerState?.() === 1 : !$("#sharedVideo").paused;
+    setMediaPlayIcon(playing);
+  }
+  function updateMediaPermissions() {
+    const isAdmin = Boolean(selfId && roomAdmins.has(selfId));
+    const mediaUrl = $("#mediaUrl");
+    const loadButton = $("#mediaForm button[type=submit]");
+    mediaUrl.disabled = !isAdmin;
+    mediaUrl.placeholder = t(isAdmin ? "لینک YouTube یا ویدئوی مستقیم MP4/WebM" : "فقط ادمین می‌تواند ویدئو را تغییر دهد");
+    loadButton.disabled = !isAdmin;
+    setLocalizedText(loadButton, isAdmin ? "پخش برای همه" : "کنترل دست ادمین");
+    $("#mediaPlay").hidden = !isAdmin;
+    $("#mediaSeek").hidden = !isAdmin;
+    $("#mediaClear").hidden = !isAdmin;
+  }
+  function setRoomAdmins(ids, promotedPeerId = "", promotedName = "") {
+    const wasAdmin = Boolean(selfId && roomAdmins.has(selfId));
+    roomAdmins = new Set(Array.isArray(ids) ? ids.filter(id => typeof id === "string") : []);
+    updateMediaPermissions();
+    updateParticipants();
+    if (!wasAdmin && selfId && roomAdmins.has(selfId)) announce("شما ادمین اتاق شدید");
+    else if (promotedPeerId && promotedPeerId !== selfId) {
+      const name = promotedName || peerNames.get(promotedPeerId) || t("یکی از دوستان");
+      announce("{{name}} ادمین اتاق شد", { name });
+    }
+  }
+  function commandMedia(action, values = {}) {
+    if (!selfId || !socket || socket.readyState !== WebSocket.OPEN) {
+      announce("برای کنترل ویدئوی مشترک، اول به اتاق وصل شو");
+      return false;
+    }
+    return send({ type: "media-command", action, ...values });
+  }
+  function syncMediaPlayer(state) {
+    if (!state) return;
+    const target = targetMediaTime(state);
+    if (state.kind === "youtube") {
+      if (!youtubePlayer?.getPlayerState) return;
+      const now = youtubePlayer.getCurrentTime() || 0;
+      if (Math.abs(now - target) > 1.1) youtubePlayer.seekTo(target, true);
+      if (state.playing && youtubePlayer.getPlayerState() !== 1) youtubePlayer.playVideo();
+      else if (!state.playing && youtubePlayer.getPlayerState() !== 2) youtubePlayer.pauseVideo();
+      updateMediaControls();
+      return;
+    }
+    const video = $("#sharedVideo");
+    if (video.readyState >= 1 && Math.abs(video.currentTime - target) > 1.1) video.currentTime = target;
+    if (state.playing && video.paused && !mediaAutoplayBlocked) video.play().catch(() => { mediaAutoplayBlocked = true; announce("برای شروع ویدئو، دکمهٔ پخش را در این دستگاه بزن"); });
+    else if (!state.playing && !video.paused) video.pause();
+    updateMediaControls();
+  }
+  function ensureYouTubeRoot() {
+    let root = $("#youtubePlayer");
+    if (root && root.tagName.toLowerCase() !== "div") {
+      const replacement = document.createElement("div"); replacement.id = "youtubePlayer";
+      root.replaceWith(replacement); root = replacement;
+    }
+    if (!root) {
+      root = document.createElement("div"); root.id = "youtubePlayer";
+      $(".shared-surface").append(root);
+    }
+    return root;
+  }
+  function destroyYouTubePlayer() {
+    try { youtubePlayer?.destroy?.(); } catch {}
+    youtubePlayer = null;
+    const root = ensureYouTubeRoot();
+    root.replaceChildren();
+    root.hidden = true;
+    return root;
+  }
+  function createYouTubePlayer(state) {
+    loadYouTubeApi().then(YT => {
+      if (sharedMedia?.videoId !== state.videoId) return;
+      const root = ensureYouTubeRoot(); root.hidden = false;
+      youtubePlayer = new YT.Player(root, {
+        width: "100%", height: "100%", videoId: state.videoId,
+        playerVars: { autoplay: 0, controls: 0, playsinline: 1, rel: 0, origin: location.origin },
+        events: {
+          onReady: event => { if (sharedMedia?.videoId === state.videoId) syncMediaPlayer(sharedMedia); },
+          onStateChange: updateMediaControls,
+          onError: () => announce("این ویدئوی YouTube اجازهٔ پخش در سایت‌های دیگر را نمی‌دهد"),
+          onAutoplayBlocked: () => { mediaAutoplayBlocked = true; announce("برای شروع ویدئو، دکمهٔ پخش را در این دستگاه بزن"); },
+        },
+      });
+    }).catch(() => announce("پخش‌کنندهٔ YouTube بارگیری نشد؛ اتصال اینترنت را بررسی کن"));
+  }
+  function applyMediaState(state) {
+    const player = $("#sharedPlayer");
+    const stage = $(".room-stage");
+    if (!state) {
+      sharedMedia = null;
+      mediaAutoplayBlocked = false;
+      player.hidden = true; stage.classList.remove("has-shared-media");
+      $("#sharedVideo").pause(); $("#sharedVideo").removeAttribute("src"); $("#sharedVideo").load();
+      destroyYouTubePlayer();
+      $("#mediaUrl").value = "";
+      updateMediaPermissions();
+      return;
+    }
+    const changed = sharedMedia?.url !== state.url || sharedMedia?.kind !== state.kind;
+    sharedMedia = state;
+    player.hidden = false; stage.classList.add("has-shared-media");
+    if (changed) {
+      mediaAutoplayBlocked = false;
+      $("#mediaUrl").value = state.url;
+      const root = destroyYouTubePlayer();
+      root.hidden = state.kind !== "youtube";
+      const video = $("#sharedVideo");
+      if (state.kind === "youtube") {
+        video.hidden = true; video.pause(); video.removeAttribute("src"); video.load();
+        createYouTubePlayer(state);
+      } else {
+        video.hidden = false;
+        root.hidden = true;
+        video.src = state.url; video.load();
+        video.onloadedmetadata = () => { if (sharedMedia?.url === state.url) syncMediaPlayer(sharedMedia); };
+        video.onerror = () => announce("این لینک ویدئو پخش نمی‌شود؛ لینک مستقیم HTTPS از MP4 یا WebM بده");
+      }
+    } else syncMediaPlayer(state);
+    updateMediaControls();
+    updateMediaPermissions();
+  }
+  setInterval(() => {
+    if (!sharedMedia || $("#sharedPlayer").hidden) return;
+    updateMediaControls();
+    if (sharedMedia.playing && Math.abs(actualMediaTime() - targetMediaTime()) > 2.2) syncMediaPlayer(sharedMedia);
+  }, 900);
   function currentSignalUrl() {
     if (window.SAMIKA_SIGNALING_URL) return window.SAMIKA_SIGNALING_URL;
     if (location.protocol === "file:") return "";
@@ -105,18 +300,49 @@
     if (video) stream.addTrack(video);
     return stream;
   }
-  function roomHashUrl(roomId) {
-    return `${location.origin}${location.pathname}${location.search}#room=${encodeURIComponent(roomId)}`;
+  function roomHashUrl(roomId, roomName = activeRoomName) {
+    const params = new URLSearchParams({ room: roomId, name: roomName || t("اتاق سامیکا") });
+    return `${location.origin}${location.pathname}${location.search}#${params}`;
   }
-  function replaceRoomHash(roomId) {
+  function replaceRoomHash(roomId, roomName = activeRoomName) {
     if (location.protocol === "file:") return;
-    const suffix = roomId ? `#room=${encodeURIComponent(roomId)}` : "";
+    const suffix = roomId ? `#${new URLSearchParams({ room: roomId, name: roomName || t("اتاق سامیکا") })}` : "";
     history.replaceState(null, "", `${location.pathname}${location.search}${suffix}`);
   }
   function readRoomHash() {
-    const value = location.hash.slice(1);
-    if (!value.startsWith("room=")) return "";
-    try { return decodeURIComponent(value.slice(5)); } catch { return ""; }
+    const params = new URLSearchParams(location.hash.slice(1));
+    return { id: params.get("room") || "", name: params.get("name") || "" };
+  }
+  function readRecentRooms() {
+    try {
+      const rooms = JSON.parse(localStorage.getItem(recentRoomsKey) || "[]");
+      return Array.isArray(rooms) ? rooms.filter(room => room && /^[a-zA-Z0-9_-]{3,80}$/.test(room.id) && typeof room.name === "string").slice(0, 12) : [];
+    } catch { return []; }
+  }
+  function saveRecentRoom(roomId, roomName) {
+    if (!roomId || location.protocol === "file:") return;
+    const rooms = readRecentRooms().filter(room => room.id !== roomId);
+    rooms.unshift({ id: roomId, name: String(roomName || t("اتاق سامیکا")).slice(0, 48), lastUsed: Date.now() });
+    try { localStorage.setItem(recentRoomsKey, JSON.stringify(rooms.slice(0, 12))); } catch {}
+    renderRecentRooms();
+  }
+  function renderRecentRooms() {
+    const section = $("#recentRoomsSection");
+    const list = $("#recentRoomsList");
+    if (!section || !list) return;
+    const rooms = readRecentRooms();
+    list.replaceChildren();
+    section.hidden = rooms.length === 0;
+    for (const room of rooms) {
+      const card = document.createElement("article"); card.className = "recent-room-card";
+      const title = document.createElement("strong"); title.textContent = room.name;
+      const details = document.createElement("small"); setLocalizedText(details, "این اتاق فقط در همین مرورگر ذخیره شده");
+      const open = document.createElement("button"); open.type = "button"; open.className = "btn btn-primary"; open.dataset.openRecentRoom = room.id; setLocalizedText(open, "بازکردن اتاق");
+      const copy = document.createElement("button"); copy.type = "button"; copy.className = "btn btn-ghost"; copy.dataset.copyRecentRoom = room.id; setLocalizedText(copy, "کپی لینک");
+      const info = document.createElement("div"); info.className = "recent-room-info"; info.append(title, details);
+      const actions = document.createElement("div"); actions.className = "recent-room-actions"; actions.append(open, copy);
+      card.append(info, actions); list.append(card);
+    }
   }
 
   function addChatMessage(name, text, self = false) {
@@ -218,26 +444,131 @@
     if (stream.getTracks().length) updateVideoTile(selfId, displayName, stream, true);
     else removeVideoTile(selfId);
   }
+
+  function showReaction(message) {
+    const stage = $(".room-stage");
+    if (!stage) return;
+    const bubble = document.createElement("span");
+    bubble.className = "floating-reaction";
+    bubble.style.setProperty("--reaction-x", `${12 + Math.random() * 76}%`);
+    bubble.textContent = message.emoji;
+    if (message.name) { bubble.title = message.name; bubble.setAttribute("aria-label", `${message.name}: ${message.emoji}`); }
+    stage.append(bubble);
+    setTimeout(() => bubble.remove(), 2400);
+  }
+
+  const challengePrompts = [
+    "در یک جمله از حال امروزت بگو",
+    "با سه ایموجی روزت را تعریف کن",
+    "یک خاطرهٔ خنده‌دار تعریف کن",
+    "از یکی از اعضای اتاق تعریف کن",
+    "یک آهنگ را زمزمه کن تا بقیه حدس بزنند",
+    "یک ادای بامزه دربیاور",
+  ];
+
+  function renderGame() {
+    const root = $("#gameContent");
+    if (!root) return;
+    root.replaceChildren();
+    if (!sharedGame) {
+      const hint = document.createElement("p"); hint.className = "game-hint";
+      setLocalizedText(hint, "یک بازی را انتخاب کن تا همهٔ اعضای اتاق با هم بازی کنند."); root.append(hint); return;
+    }
+    const game = sharedGame;
+    const status = document.createElement("p"); status.className = "game-status";
+    if (game.type === "tic") {
+      const players = game.players || [];
+      if (!players[1]) setLocalizedText(status, "منتظر بازیکن دوم هستیم…");
+      else if (game.winner === "draw") setLocalizedText(status, "بازی مساوی شد!");
+      else if (game.winner) {
+        const winner = players[game.winner === "X" ? 0 : 1]?.name || "";
+        setLocalizedText(status, "برنده: {{name}}", { name: winner });
+      } else setLocalizedText(status, "نوبت {{name}}", { name: game.turnName || "" });
+      const names = document.createElement("div"); names.className = "game-players";
+      const playerLabel = document.createElement("span"); setLocalizedText(playerLabel, "X: {{name}}", { name: players[0]?.name || t("بازیکن اول") });
+      const opponentLabel = document.createElement("span"); setLocalizedText(opponentLabel, "O: {{name}}", { name: players[1]?.name || t("بازیکن دوم") });
+      names.append(playerLabel, opponentLabel);
+      const board = document.createElement("div"); board.className = "tic-board";
+      (game.board || Array(9).fill("")).forEach((value, index) => {
+        const cell = document.createElement("button"); cell.type = "button"; cell.className = "tic-cell"; cell.dataset.ticMove = String(index); cell.textContent = value || "·";
+        cell.disabled = Boolean(value) || !game.active || !players[1] || !players.some(player => player?.id === selfId) || game.turn !== selfId;
+        board.append(cell);
+      });
+      const restart = document.createElement("button"); restart.type = "button"; restart.className = "btn btn-ghost"; restart.dataset.gameStart = "tic"; setLocalizedText(restart, "شروع دوباره");
+      root.append(status, names, board, restart); return;
+    }
+    if (game.type === "guess") {
+      if (game.winner) setLocalizedText(status, "{{name}} عدد را پیدا کرد!", { name: game.winner });
+      else if (game.lastGuess) setLocalizedText(status, "{{name}} حدس زد {{value}}؛ {{hint}}", {
+        name: game.lastGuess.name, value: game.lastGuess.value,
+        hint: game.hint === "high" ? t("عدد کوچک‌تری بگو") : game.hint === "low" ? t("عدد بزرگ‌تری بگو") : "",
+      });
+      else setLocalizedText(status, "یک عدد بین ۱ تا ۵۰ را پیدا کنید.");
+      const tries = document.createElement("small"); tries.className = "game-hint"; setLocalizedText(tries, "تعداد حدس‌ها: {{count}}", { count: game.tries || 0 });
+      const form = document.createElement("form"); form.className = "guess-form"; form.id = "guessGameForm";
+      const input = document.createElement("input"); input.type = "number"; input.min = "1"; input.max = "50"; input.required = true; input.inputMode = "numeric"; input.setAttribute("aria-label", t("حدس عدد")); input.disabled = !game.active;
+      const guess = document.createElement("button"); guess.type = "submit"; guess.className = "btn btn-primary"; setLocalizedText(guess, "ثبت حدس"); guess.disabled = !game.active;
+      form.append(input, guess);
+      const restart = document.createElement("button"); restart.type = "button"; restart.className = "btn btn-ghost"; restart.dataset.gameStart = "guess"; setLocalizedText(restart, "شروع دور تازه");
+      root.append(status, tries, form, restart); return;
+    }
+    if (game.type === "challenge") {
+      const prompt = document.createElement("strong"); prompt.className = "challenge-prompt"; setLocalizedText(prompt, challengePrompts[game.promptIndex] || challengePrompts[0]);
+      const by = document.createElement("small"); by.className = "game-hint"; setLocalizedText(by, "انتخاب‌کننده: {{name}}", { name: game.by || "" });
+      const next = document.createElement("button"); next.type = "button"; next.className = "btn btn-primary"; next.dataset.nextChallenge = "true"; setLocalizedText(next, "چالش بعدی");
+      root.append(prompt, by, next);
+    }
+  }
+
+  function installGameActions() {
+    const panel = $("#gamePanel");
+    if (!panel) return;
+    panel.addEventListener("click", event => {
+      const start = event.target.closest("[data-game-start]");
+      if (start) { send({ type: "game-command", action: "start", mode: start.dataset.gameStart }); return; }
+      const cell = event.target.closest("[data-tic-move]");
+      if (cell) { send({ type: "game-command", action: "move", index: Number(cell.dataset.ticMove) }); return; }
+      if (event.target.closest("[data-next-challenge]")) send({ type: "game-command", action: "next-challenge", promptIndex: Math.floor(Math.random() * challengePrompts.length) });
+    });
+    panel.addEventListener("submit", event => {
+      if (event.target.id !== "guessGameForm") return;
+      event.preventDefault();
+      const input = $("input[type=number]", event.target);
+      if (input?.value) send({ type: "game-command", action: "guess", value: Number(input.value) });
+    });
+  }
+  installGameActions();
   function updateParticipants() {
     const strip = $("#participantStrip");
     strip.replaceChildren();
-    const participants = selfId ? [{ id: selfId, name: displayName, local: true }, ...[...peerNames].map(([id, name]) => ({ id, name }))] : [];
-    participants.forEach((participant, index) => {
-      const item = document.createElement("div"); item.className = "participant";
+    const participants = selfId ? [
+      { id: selfId, name: displayName, local: true, isAdmin: roomAdmins.has(selfId) },
+      ...[...peerNames].map(([id, name]) => ({ id, name, isAdmin: roomAdmins.has(id) })),
+    ] : [];
+    participants.forEach(participant => {
+      const item = document.createElement("button"); item.type = "button"; item.className = "participant";
+      const canPromote = Boolean(selfId && roomAdmins.has(selfId) && !participant.local && !participant.isAdmin);
+      item.disabled = !canPromote;
+      if (canPromote) {
+        item.dataset.promoteAdmin = participant.id;
+        item.setAttribute("aria-label", t("برای ادمین‌کردن {{name}} کلیک کن", { name: participant.name }));
+      }
       const avatar = document.createElement("i"); avatar.className = "avatar"; avatar.textContent = participant.name.trim()[0] || "؟";
-      if (index % 2) avatar.style.background = "#9fd4be";
       const text = document.createElement("div");
       const name = document.createElement("span");
       if (participant.local) setLocalizedText(name, "{{name}} · شما", { name: participant.name }); else name.textContent = participant.name;
-      const state = document.createElement("small"); setLocalizedText(state, participant.local ? "در این دستگاه" : "در اتاق");
+      const state = document.createElement("small");
+      if (participant.isAdmin) setLocalizedText(state, participant.local ? "ادمین اتاق · شما" : "ادمین اتاق");
+      else if (canPromote) setLocalizedText(state, "برای ادمین‌کردن کلیک کن");
+      else setLocalizedText(state, participant.local ? "در این دستگاه" : "در اتاق");
       text.append(name, state); item.append(avatar, text); strip.append(item);
     });
   }
   function removePeer(peerId) {
     const state = peerConnections.get(peerId);
     if (state) state.pc.close();
-    peerConnections.delete(peerId); peerNames.delete(peerId); remoteStreams.delete(peerId); signalQueues.delete(peerId);
-    removeVideoTile(peerId); updateParticipants();
+    peerConnections.delete(peerId); peerNames.delete(peerId); remoteStreams.delete(peerId); signalQueues.delete(peerId); roomAdmins.delete(peerId);
+    removeVideoTile(peerId); updateMediaPermissions(); updateParticipants();
   }
 
   async function ensurePeer(peerId, name = peerNames.get(peerId) || t("مهمان")) {
@@ -250,8 +581,11 @@
     const videoStream = outgoingVideo ? new MediaStream([outgoingVideo]) : null;
     const micTransceiver = pc.addTransceiver(localAudioTrack || "audio", { direction: localAudioTrack ? "sendrecv" : "recvonly", ...(micStream ? { streams: [micStream] } : {}) });
     const videoTransceiver = pc.addTransceiver(outgoingVideo || "video", { direction: outgoingVideo ? "sendrecv" : "recvonly", ...(videoStream ? { streams: [videoStream] } : {}) });
-    const shareAudio = shareStream?.getAudioTracks().find(track => track.readyState === "live");
-    const shareAudioTransceiver = shareAudio ? pc.addTransceiver(shareAudio, { direction: "sendrecv", streams: [shareStream] }) : null;
+    const shareAudio = shareStream?.getAudioTracks().find(track => track.readyState === "live") || null;
+    const shareAudioTransceiver = pc.addTransceiver(shareAudio || "audio", {
+      direction: shareAudio ? "sendrecv" : "recvonly",
+      ...(shareAudio ? { streams: [shareStream] } : {}),
+    });
     const state = {
       pc,
       polite: Boolean(selfId && selfId.localeCompare(peerId) > 0),
@@ -381,8 +715,8 @@
       await state.videoTransceiver.sender.replaceTrack(replacement).catch(() => {});
       state.videoTransceiver.direction = replacement ? "sendrecv" : "recvonly";
       if (state.shareAudioTransceiver) {
-        state.pc.removeTrack(state.shareAudioTransceiver.sender);
-        state.shareAudioTransceiver = null;
+        await state.shareAudioTransceiver.sender.replaceTrack(null).catch(() => {});
+        state.shareAudioTransceiver.direction = "recvonly";
       }
     }
     oldStream.getTracks().forEach(track => { track.onended = null; track.stop(); });
@@ -404,27 +738,34 @@
     }
     const button = $("[data-share]"); button.disabled = true;
     try {
-      shareStream = await navigator.mediaDevices.getDisplayMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30, max: 30 } }, audio: true });
+      shareStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 15, max: 30 } },
+        audio: true,
+        systemAudio: "include",
+        preferCurrentTab: true,
+      });
       const videoTrack = shareStream.getVideoTracks()[0];
       if (!videoTrack) throw new Error("No screen video track was selected");
+      const audioTrack = shareStream.getAudioTracks().find(track => track.readyState === "live") || null;
       videoTrack.onended = () => { if (shareStream) stopScreenShare(); };
       for (const state of peerConnections.values()) {
         await state.videoTransceiver.sender.replaceTrack(videoTrack);
         state.videoTransceiver.direction = "sendrecv";
-        const audioTrack = shareStream.getAudioTracks().find(track => track.readyState === "live");
-        if (audioTrack) state.shareAudioTransceiver = state.pc.addTransceiver(audioTrack, { direction: "sendrecv", streams: [shareStream] });
+        await state.shareAudioTransceiver.sender.replaceTrack(audioTrack);
+        state.shareAudioTransceiver.direction = audioTrack ? "sendrecv" : "recvonly";
       }
       send({ type: "video-mode", mode: "screen" });
       button.classList.add("on"); $("span", button).textContent = t("توقف شیر");
-      refreshLocalTile(); announce("انتخاب صفحه باز شد؛ تصویر صفحه به اتاق فرستاده می‌شود");
+      refreshLocalTile();
+      announce(audioTrack ? "تصویر و صدای صفحه برای اتاق فرستاده می‌شود" : "تصویر شیر شد؛ این دستگاه صدای صفحه را نداد. برای صدای Instagram، میکروفن و بلندگوی گوشی را روشن کن");
     } catch (error) {
       for (const state of peerConnections.values()) {
         const replacement = cameraTrack?.readyState === "live" && cameraTrack.enabled ? cameraTrack : null;
         await state.videoTransceiver.sender.replaceTrack(replacement).catch(() => {});
         state.videoTransceiver.direction = replacement ? "sendrecv" : "recvonly";
         if (state.shareAudioTransceiver) {
-          state.pc.removeTrack(state.shareAudioTransceiver.sender);
-          state.shareAudioTransceiver = null;
+          await state.shareAudioTransceiver.sender.replaceTrack(null).catch(() => {});
+          state.shareAudioTransceiver.direction = "recvonly";
         }
       }
       shareStream?.getTracks().forEach(track => track.stop()); shareStream = null;
@@ -439,13 +780,19 @@
   function handleServerMessage(message) {
     if (message.type === "joined") {
       selfId = message.selfId;
+      setRoomAdmins(message.adminIds || []);
+      if (Number.isFinite(message.serverNow)) serverClockOffset = message.serverNow - Date.now();
       activeRoomId = message.roomId;
       activeRoomName = message.roomName || activeRoomName;
+      sharedGame = message.game || null;
       $("#activeRoomTitle").textContent = activeRoomName;
       setLocalizedText($("#chatStatus"), "{{name}} · وصل", { name: activeRoomName });
       setLocalizedText($("#roomId"), "کد {{code}}", { code: activeRoomId });
-      replaceRoomHash(activeRoomId);
+      replaceRoomHash(activeRoomId, activeRoomName);
+      saveRecentRoom(activeRoomId, activeRoomName);
       setNetworkStatus("● سرور وصل است", true);
+      applyMediaState(message.media || null);
+      renderGame();
       updateParticipants();
       message.peers.forEach(peer => { peerNames.set(peer.id, peer.name); videoModes.set(peer.id, peer.videoMode || "none"); ensurePeer(peer.id, peer.name); });
       updateParticipants();
@@ -454,13 +801,24 @@
     if (message.type === "peer-joined") {
       peerNames.set(message.peer.id, message.peer.name);
       videoModes.set(message.peer.id, message.peer.videoMode || "none");
+      if (message.peer.isAdmin) roomAdmins.add(message.peer.id);
       updateParticipants();
       addSystemMessage("{{name}} وارد اتاق شد", { name: message.peer.name });
+      return;
+    }
+    if (message.type === "room-roles") {
+      setRoomAdmins(message.adminIds || [], message.promotedPeerId || "", message.promotedName || "");
       return;
     }
     if (message.type === "video-mode") {
       setRemoteVideoMode(message.peerId, message.mode);
       return;
+    }
+    if (message.type === "reaction") { showReaction(message); return; }
+    if (message.type === "game-state") { sharedGame = message.game || null; renderGame(); return; }
+    if (message.type === "media-state") {
+      if (Number.isFinite(message.serverNow)) serverClockOffset = message.serverNow - Date.now();
+      applyMediaState(message.media || null); return;
     }
     if (message.type === "peer-left") {
       const name = peerNames.get(message.peerId) || t("یکی از دوستان");
@@ -475,6 +833,7 @@
     }
     if (message.type === "chat") { addChatMessage(message.name || t("مهمان"), message.text); return; }
     if (message.type === "error") {
+      if (message.code === "admin-required") { announce("تنها ادمین‌های اتاق اجازهٔ کنترل ویدئو و مدیریت اعضا را دارند."); return; }
       setNetworkStatus("● ورود ناموفق", false);
       announce(message.message || "خطای اتصال");
     }
@@ -507,25 +866,40 @@
     };
   }
   function openCreate() {
+    $("#displayName").value = "";
     showBackdrop(createBackdrop);
     setTimeout(() => $("#roomName").focus(), 80);
   }
+  function requestRoomJoin(name, roomCode) {
+    pendingRoom = { name, roomCode };
+    $("#joinDisplayName").value = "";
+    setLocalizedText($("#joinRoomDescription"), "برای ورود به «{{room}}»، نام کاربری‌ات را وارد کن.", { room: name });
+    showBackdrop(joinBackdrop);
+    setTimeout(() => $("#joinDisplayName").focus(), 80);
+  }
   function openRoom(name, roomCode = randomRoomCode()) {
+    if (!getDisplayName()) { requestRoomJoin(name, roomCode); return false; }
     if (socket && socket.readyState !== WebSocket.CLOSED) leaveRoom(false);
     activeRoomName = name || t("اتاق سامیکا");
     activeRoomId = roomCode;
+    sharedGame = null;
+    $("#gamePanel").hidden = true; $("#chatMessages").hidden = false; $("#chatForm").hidden = false;
+    $(".room-layout").classList.remove("games-open"); $("#gameToggle").classList.remove("on");
+    saveRecentRoom(activeRoomId, activeRoomName);
+    replaceRoomHash(activeRoomId, activeRoomName);
     $("#activeRoomTitle").textContent = activeRoomName;
     setLocalizedText($("#roomId"), "کد {{code}}", { code: activeRoomId });
     $("#chatMessages").replaceChildren();
     chatVisible = true;
     $("#chatPanel").hidden = false;
     $(".room-layout").classList.remove("chat-hidden");
-    addSystemMessage("به اتاق سامیکا خوش اومدی! لینک را برای دوستانت بفرست 👋");
+    addSystemMessage("سلام، به سامیکا خوش آمدید! امیدوارم کنار دوستانتان لحظات خوبی داشته باشید. — سام کاظمی ✨");
     setNetworkStatus("● در حال اتصال…", false);
-    getDisplayName();
     hideBackdrop(createBackdrop);
+    hideBackdrop(joinBackdrop);
     showBackdrop(roomBackdrop);
     connectToRoom();
+    return true;
   }
   function leaveRoom(closeModal = true) {
     intentionalLeave = true;
@@ -543,6 +917,11 @@
     shareStream = null;
     oldShareStream?.getTracks().forEach(track => { track.onended = null; track.stop(); });
     localAudioTrack = null; cameraTrack = null; selfId = "";
+    roomAdmins.clear(); updateMediaPermissions();
+    sharedGame = null; renderGame();
+    $("#gamePanel").hidden = true; $("#chatMessages").hidden = false; $("#chatForm").hidden = false;
+    $(".room-layout").classList.remove("games-open"); $("#gameToggle").classList.remove("on");
+    applyMediaState(null);
     setDeviceButton("audio", false); setDeviceButton("video", false);
     const shareButton = $("[data-share]"); shareButton.classList.remove("on", "off"); $("span", shareButton).textContent = t("شیر اسکرین");
     updateParticipants(); replaceRoomHash("");
@@ -555,25 +934,109 @@
     const shareButton = $("[data-share]");
     $("span", shareButton).textContent = t(shareStream ? "توقف شیر" : "شیر اسکرین");
     updateParticipants();
+    updateMediaPermissions();
     for (const [id, tile] of videoTiles) {
       if (tile.local) updateVideoTile(id, displayName, activeLocalStream(), true);
     }
+    updateMediaControls();
+    renderRecentRooms();
+    renderGame();
   });
 
   $$('[data-open-create]').forEach(button => button.addEventListener("click", openCreate));
   $$('[data-close-create]').forEach(button => button.addEventListener("click", () => hideBackdrop(createBackdrop)));
   createBackdrop.addEventListener("click", event => { if (event.target === createBackdrop) hideBackdrop(createBackdrop); });
+  joinBackdrop.addEventListener("click", event => { if (event.target === joinBackdrop) { pendingRoom = null; hideBackdrop(joinBackdrop); replaceRoomHash(""); } });
   $("#createForm").addEventListener("submit", event => {
     event.preventDefault();
+    if (!getDisplayName()) { $("#displayName").focus(); announce("نام کاربری را وارد کن تا بتوانی وارد اتاق شوی"); return; }
     const roomName = $("#roomName").value.trim() || t("دورهمی دوستانه");
-    getDisplayName(); openRoom(roomName); $("#roomName").value = "";
-    announce(selectedPrivacy === "private" ? "اتاق خصوصی سامیکا ساخته شد" : "اتاق عمومی ساخته شد؛ اتاق‌های عمومی هنوز فهرست نمی‌شوند");
+    openRoom(roomName); $("#roomName").value = "";
+    announce("اتاق خصوصی سامیکا ساخته شد؛ لینک دعوت را فقط برای افراد موردنظرت بفرست");
   });
-  $$('input[name="privacy"]').forEach(input => input.addEventListener("change", () => {
-    selectedPrivacy = input.value;
-    $$(".privacy-option").forEach(option => option.classList.toggle("selected", $("input", option).checked));
-  }));
-  $$('[data-join]').forEach(button => button.addEventListener("click", () => openRoom(button.dataset.join, roomCodeForName(button.dataset.joinSource || button.dataset.join))));
+  $("#joinForm").addEventListener("submit", event => {
+    event.preventDefault();
+    const name = $("#joinDisplayName").value.trim().slice(0, 28);
+    if (!name || !pendingRoom) { announce("نام کاربری را وارد کن تا بتوانی وارد اتاق شوی"); return; }
+    displayName = name;
+    $("#displayName").value = name;
+    try { localStorage.setItem("samika-display-name", name); } catch {}
+    const destination = pendingRoom; pendingRoom = null;
+    openRoom(destination.name, destination.roomCode);
+  });
+  $$('[data-join]').forEach(button => button.addEventListener("click", () => requestRoomJoin(button.dataset.join, randomRoomCode())));
+  $("#recentRoomsList")?.addEventListener("click", async event => {
+    const open = event.target.closest("[data-open-recent-room]");
+    if (open) {
+      const room = readRecentRooms().find(item => item.id === open.dataset.openRecentRoom);
+      if (room) openRoom(room.name, room.id);
+      return;
+    }
+    const copy = event.target.closest("[data-copy-recent-room]");
+    if (copy) {
+      const room = readRecentRooms().find(item => item.id === copy.dataset.copyRecentRoom);
+      if (!room) return;
+      try { await navigator.clipboard.writeText(roomHashUrl(room.id, room.name)); announce("لینک دعوت کپی شد؛ دوستت با بازکردنش وارد همین اتاق می‌شود"); }
+      catch { announce("مرورگر اجازهٔ کپی نداد؛ روی بازکردن اتاق بزن و لینک را کپی کن"); }
+    }
+  });
+  $("#clearRecentRooms")?.addEventListener("click", () => {
+    try { localStorage.removeItem(recentRoomsKey); } catch {}
+    renderRecentRooms();
+  });
+  $("#mediaForm").addEventListener("submit", event => {
+    event.preventDefault();
+    const media = parseSharedMedia($("#mediaUrl").value);
+    if (!media) { announce("لینک پشتیبانی نمی‌شود؛ لینک YouTube یا مستقیم MP4/WebM بده"); return; }
+    commandMedia("load", { url: media.url });
+  });
+  $("#mediaPlay").addEventListener("click", () => {
+    if (!sharedMedia) return;
+    const video = $("#sharedVideo");
+    const playing = sharedMedia.kind === "youtube" ? youtubePlayer?.getPlayerState?.() === 1 : !video.paused;
+    if (playing) {
+      if (sharedMedia.kind === "youtube") youtubePlayer?.pauseVideo?.(); else video.pause();
+      commandMedia("pause", { currentTime: actualMediaTime() });
+    } else {
+      mediaAutoplayBlocked = false;
+      if (sharedMedia.kind === "youtube") youtubePlayer?.playVideo?.(); else video.play().catch(() => announce("برای پخش، دوباره دکمهٔ پخش را بزن"));
+      commandMedia("play", { currentTime: actualMediaTime() });
+    }
+    updateMediaControls();
+  });
+  $("#mediaSeek").addEventListener("pointerdown", () => { seekingMedia = true; });
+  $("#mediaSeek").addEventListener("touchstart", () => { seekingMedia = true; }, { passive: true });
+  $("#mediaSeek").addEventListener("input", () => {
+    const duration = mediaDuration();
+    $("#mediaCurrent").textContent = formatMediaTime(Number($("#mediaSeek").value) / 1000 * duration);
+  });
+  $("#mediaSeek").addEventListener("change", () => {
+    if (!sharedMedia) { seekingMedia = false; return; }
+    const seconds = Number($("#mediaSeek").value) / 1000 * mediaDuration();
+    if (sharedMedia.kind === "youtube") youtubePlayer?.seekTo?.(seconds, true);
+    else $("#sharedVideo").currentTime = seconds;
+    commandMedia("seek", { currentTime: seconds });
+    seekingMedia = false;
+  });
+  $("#mediaClear").addEventListener("click", () => commandMedia("clear"));
+  $("#mediaFullscreen").addEventListener("click", async () => {
+    const video = $("#sharedVideo");
+    const player = $("#sharedPlayer");
+    try {
+      const activeFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+      const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+      if (activeFullscreen) { if (exitFullscreen) await exitFullscreen.call(document); return; }
+      const requestFullscreen = player.requestFullscreen || player.webkitRequestFullscreen;
+      if (requestFullscreen) {
+        try { await requestFullscreen.call(player); return; } catch {}
+      }
+      if (sharedMedia?.kind === "direct" && typeof video.webkitEnterFullscreen === "function") { video.webkitEnterFullscreen(); return; }
+      const frame = $("#youtubePlayer iframe");
+      const frameFullscreen = frame?.requestFullscreen || frame?.webkitRequestFullscreen;
+      if (frameFullscreen) { await frameFullscreen.call(frame); return; }
+      throw new Error("Fullscreen is unavailable");
+    } catch { announce("تمام‌صفحه در این مرورگر در دسترس نیست"); }
+  });
   function applyRoomFilters() {
     const query = $("#roomSearch").value.trim().toLocaleLowerCase(i18n?.locale || "fa-IR");
     let visible = 0;
@@ -593,19 +1056,41 @@
   }));
   $("#roomSearch").addEventListener("input", applyRoomFilters);
   $("#closeRoom").addEventListener("click", () => leaveRoom());
+  $("#participantStrip").addEventListener("click", event => {
+    const participant = event.target.closest("[data-promote-admin]");
+    if (!participant || !roomAdmins.has(selfId)) return;
+    send({ type: "room-command", action: "promote-admin", peerId: participant.dataset.promoteAdmin });
+  });
   $("#leaveRoom").addEventListener("click", () => { leaveRoom(); announce("از اتاق خارج شدی"); });
   roomBackdrop.addEventListener("click", event => { if (event.target === roomBackdrop) leaveRoom(); });
   $("#inviteBtn").addEventListener("click", async () => {
     if (location.protocol === "file:") { announce("برای ساخت لینک دعوت، سامیکا را با npm start اجرا کن"); return; }
     try {
-      await navigator.clipboard.writeText(roomHashUrl(activeRoomId));
+      await navigator.clipboard.writeText(roomHashUrl(activeRoomId, activeRoomName));
       announce("لینک دعوت کپی شد؛ دوستت با بازکردنش وارد همین اتاق می‌شود");
     } catch { announce("مرورگر اجازهٔ کپی نداد؛ نشانی اتاق را از نوار آدرس کپی کن"); }
   });
   $$('[data-device]').forEach(button => button.addEventListener("click", () => toggleDevice(button.dataset.device)));
   $("[data-share]").addEventListener("click", toggleScreenShare);
+  $("#reactionToolbar")?.addEventListener("click", event => {
+    const button = event.target.closest("[data-reaction]");
+    if (button) send({ type: "reaction", emoji: button.dataset.reaction });
+  });
+  $("#gameToggle")?.addEventListener("click", event => {
+    const panel = $("#gamePanel");
+    panel.hidden = !panel.hidden;
+    $("#chatMessages").hidden = !panel.hidden;
+    $("#chatForm").hidden = !panel.hidden;
+    $(".room-layout").classList.toggle("games-open", !panel.hidden);
+    event.currentTarget.classList.toggle("on", !panel.hidden);
+    renderGame();
+  });
   $$('[data-toggle="chat"]').forEach(button => button.addEventListener("click", () => {
     chatVisible = !chatVisible;
+    if (!chatVisible && !$("#gamePanel").hidden) {
+      $("#gamePanel").hidden = true; $("#chatMessages").hidden = false; $("#chatForm").hidden = false;
+      $(".room-layout").classList.remove("games-open"); $("#gameToggle").classList.remove("on");
+    }
     $("#chatPanel").hidden = !chatVisible;
     $(".room-layout").classList.toggle("chat-hidden", !chatVisible);
     button.classList.toggle("on", chatVisible);
@@ -628,6 +1113,7 @@
     if (event.key === "Escape") {
       if (roomBackdrop.classList.contains("open")) leaveRoom();
       else if (createBackdrop.classList.contains("open")) hideBackdrop(createBackdrop);
+      else if (joinBackdrop.classList.contains("open")) { pendingRoom = null; hideBackdrop(joinBackdrop); replaceRoomHash(""); }
     }
   });
   window.addEventListener("beforeunload", () => {
@@ -636,6 +1122,35 @@
     localAudioTrack?.stop(); cameraTrack?.stop(); shareStream?.getTracks().forEach(track => track.stop());
   });
 
+  const installButton = $("#installAppButton");
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault(); deferredInstallPrompt = event;
+    if (installButton) installButton.classList.add("install-ready");
+  });
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    if (installButton) installButton.classList.remove("install-ready");
+    announce("سامیکا روی دستگاه نصب شد");
+  });
+  installButton?.addEventListener("click", async () => {
+    if (deferredInstallPrompt) {
+      await deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      if (choice.outcome === "accepted") announce("درخواست نصب سامیکا پذیرفته شد");
+      return;
+    }
+    if (window.matchMedia?.("(display-mode: standalone)").matches || navigator.standalone) {
+      announce("سامیکا از قبل روی دستگاه نصب است"); return;
+    }
+    announce("برای نصب: در Safari دکمهٔ اشتراک‌گذاری و افزودن به صفحهٔ اصلی را بزن؛ در Chrome از منوی ⋮ گزینهٔ نصب را انتخاب کن");
+  });
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(error => console.warn("Samika offline install support is unavailable", error)));
+  }
+
+  renderRecentRooms();
+  updateMediaPermissions();
   const linkedRoom = readRoomHash();
-  if (linkedRoom && /^[a-zA-Z0-9_-]{3,80}$/.test(linkedRoom)) setTimeout(() => openRoom("Samika", linkedRoom), 0);
+  if (linkedRoom.id && /^[a-zA-Z0-9_-]{3,80}$/.test(linkedRoom.id)) setTimeout(() => openRoom(linkedRoom.name || "Samika", linkedRoom.id), 0);
 })();
