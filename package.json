@@ -1,0 +1,16 @@
+{
+  "name": "samika-hangout",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Samika browser hangout with WebRTC audio, video, screen sharing, and room chat.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

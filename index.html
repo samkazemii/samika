@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0b13">
+  <meta name="description" content="یک پاتوق آنلاین برای تماشای فیلم، بازی و گپ‌وگفت با دوستان.">
+  <title>سامیکا | Samika — دورهمی آنلاین</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0b13;
+      --panel: #12121d;
+      --panel-2: #181824;
+      --line: rgba(255,255,255,.085);
+      --ink: #f5f2ff;
+      --muted: #a4a1b4;
+      --purple: #9b7bff;
+      --purple-2: #7355e9;
+      --mint: #83e3c1;
+      --radius: 22px;
+      --shadow: 0 30px 90px rgba(0,0,0,.42);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at 82% 4%, rgba(103,72,204,.2), transparent 32rem),
+        radial-gradient(ellipse at 9% 38%, rgba(42,106,107,.1), transparent 27rem),
+        var(--bg);
+      color: var(--ink);
+      font-family: Vazirmatn, "Segoe UI", Tahoma, Arial, sans-serif;
+      line-height: 1.65;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { width: min(1160px, calc(100% - 44px)); margin-inline: auto; }
+    .topbar {
+      height: 78px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,.055); position: sticky; top: 0; z-index: 20;
+      background: rgba(11,11,19,.78); backdrop-filter: blur(18px);
+    }
+    .topbar-inner { display: flex; align-items: center; justify-content: space-between; width: min(1160px, calc(100% - 44px)); margin: auto; }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+    .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 12px; color: #151020; background: linear-gradient(145deg,#c5acff,#8e6cff); box-shadow: 0 7px 24px #8064ed55; }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .nav { display: flex; gap: 30px; align-items: center; color: #c2bfce; font-size: 13px; }
+    .nav a { transition: color .2s; }
+    .nav a:hover { color: #fff; }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .btn { min-height: 43px; padding: 0 18px; border: 1px solid transparent; border-radius: 13px; cursor: pointer; font-weight: 700; font-size: 13px; transition: transform .18s, background .18s, border .18s; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { color: #fff; background: linear-gradient(135deg,var(--purple),var(--purple-2)); box-shadow: 0 9px 25px #7458e344; }
+    .btn-primary:hover { background: linear-gradient(135deg,#aa91ff,#8062fb); }
+    .btn-ghost { border-color: var(--line); background: rgba(255,255,255,.035); color: #e5e2ef; }
+    .btn-ghost:hover { background: rgba(255,255,255,.08); }
+    .btn-lg { min-height: 52px; padding-inline: 22px; font-size: 14px; border-radius: 15px; }
+    .hero { display: grid; grid-template-columns: 1fr 1.06fr; gap: 64px; align-items: center; padding: 76px 0 62px; min-height: 595px; }
+    .hero-copy { max-width: 500px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #c8b8ff; font-size: 12px; font-weight: 700; letter-spacing: .2px; padding: 7px 11px; border: 1px solid #a58cff32; border-radius: 999px; background: #8d6dff10; }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 11px #83e3c1; }
+    h1 { font-size: clamp(38px,5vw,61px); line-height: 1.22; letter-spacing: -2.1px; margin: 22px 0 17px; font-weight: 850; }
+    .gradient-text { background: linear-gradient(90deg,#c6b7ff,#8c76ff 58%,#85e3c4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .hero-copy > p { color: var(--muted); font-size: 16px; line-height: 2; max-width: 445px; margin: 0 0 26px; }
+    .hero-buttons { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .under-note { margin-top: 17px; font-size: 11px; color: #888598; display: flex; align-items: center; gap: 8px; }
+    .under-note svg { color: var(--mint); width: 14px; }
+    .hero-art { position: relative; padding: 17px; border: 1px solid rgba(255,255,255,.12); border-radius: 28px; background: linear-gradient(145deg,rgba(35,32,54,.94),rgba(20,20,31,.92)); box-shadow: var(--shadow); transform: rotate(-1deg); }
+    .hero-art:before { content:""; position:absolute; inset:15% -12% -16% 23%; z-index:-1; background:#7759e923; filter:blur(52px); border-radius:50%; }
+    .showcase-head { display:flex; justify-content:space-between; align-items:center; padding: 1px 3px 14px; color:#dcd8e7; font-size:11px; }
+    .live-pill { color:#bcf1de; display:flex; align-items:center; gap:6px; background:#82dfbf12; border:1px solid #82dfbf22; border-radius:99px; padding:5px 9px; }
+    .live-pill i { width:6px; height:6px; display:block; background:#7ce0b8; border-radius:50%; box-shadow:0 0 10px #7ce0b8; }
+    .showcase-stage { height: 292px; border-radius: 18px; overflow:hidden; position:relative; background:#24223a; border:1px solid #ffffff16; }
+    .room-illustration { width:100%; height:100%; display:block; }
+    .stage-shade { position:absolute; inset:40% 0 0; background:linear-gradient(transparent,rgba(9,9,17,.78)); }
+    .stage-label { position:absolute; right:16px; bottom:15px; left:16px; display:flex; justify-content:space-between; align-items:end; }
+    .stage-label strong { display:block; font-size:14px; }
+    .stage-label small { display:block; color:#d2cede; font-size:10px; margin-top:3px; }
+    .avatar-stack { display:flex; align-items:center; direction:ltr; }
+    .avatar { display:grid; place-items:center; width:31px; height:31px; border:2px solid #171522; border-radius:50%; margin-left:-8px; font-size:12px; font-weight:800; color:#211a2e; }
+    .avatar:nth-child(1){background:#f3b39e}.avatar:nth-child(2){background:#a9d6c1}.avatar:nth-child(3){background:#c5b5f7}.avatar:nth-child(4){background:#f1d18b}
+    .avatar-count { color:#fff; background:#565061; font-size:9px; }
+    .showcase-tools { display:flex; justify-content:space-between; align-items:center; padding:13px 2px 0; }
+    .tool-buttons { display:flex; gap:7px; direction:rtl; }
+    .tool { width:34px;height:34px;border:1px solid #ffffff12;background:#ffffff08;border-radius:11px;display:grid;place-items:center;color:#d6d2df; }
+    .tool svg { width:15px;height:15px; }
+    .mini-play { background:var(--purple-2); border:0; color:white; width:38px; height:38px; border-radius:13px; display:grid; place-items:center; }
+    .showcase-caption { color:#9e9bad; font-size:10px; }
+    .floating-note { position:absolute; left:-47px; bottom:92px; padding:11px 14px; border:1px solid #ffffff17; border-radius:15px; background:rgba(25,24,37,.93); backdrop-filter:blur(12px); box-shadow:0 10px 35px #0006; color:#d8d5e2; font-size:10px; }
+    .floating-note b { color:#fff; font-size:11px; }
+    .note-line { display:flex; gap:8px; align-items:center; }
+    .music-dot { width:25px;height:25px;border-radius:9px;display:grid;place-items:center;background:#9d7bff30;color:#cabbff; }
+    .metrics { display:flex; align-items:center; gap:31px; margin-top:33px; }
+    .metric { display:flex; align-items:center; gap:9px; }
+    .metric-icon { width:35px;height:35px;display:grid;place-items:center;color:#b7a4ff;background:#a185ff13;border-radius:12px; }
+    .metric-icon svg { width:16px;height:16px; }
+    .metric strong { display:block; font-size:13px; line-height:1.3; }
+    .metric span { color:#858295; font-size:10px; }
+    .section { padding:70px 0; }
+    .section-head { display:flex; justify-content:space-between; align-items:end; gap:20px; margin-bottom:26px; }
+    .section-kicker { color:#9e85ff; text-transform:uppercase; font-size:10px; font-weight:800; letter-spacing:1.6px; }
+    h2 { font-size:29px; line-height:1.4; margin:7px 0 0; letter-spacing:-.7px; }
+    .section-head p { color:#9693a6; font-size:13px; margin:0; max-width:390px; }
+    .activity-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:14px; }
+    .activity-card { padding:19px; border:1px solid var(--line); border-radius:19px; background:linear-gradient(145deg,#151520,#11111a); min-height:190px; position:relative; overflow:hidden; transition:.2s; }
+    .activity-card:hover { transform:translateY(-4px); border-color:#a58aff4c; background:#181724; }
+    .activity-card:after { content:"";position:absolute;width:100px;height:100px;border-radius:50%;background:var(--glow,#7555e9);opacity:.12;filter:blur(30px);left:-28px;top:-35px; }
+    .activity-icon { width:43px;height:43px;border-radius:14px;display:grid;place-items:center;background:var(--icon-bg,#8d70f922);color:var(--icon,#baa9ff);margin-bottom:25px; }
+    .activity-icon svg { width:21px;height:21px; }
+    .activity-card h3 { font-size:15px;margin:0 0 5px; }
+    .activity-card p { color:#9390a1;font-size:11px;margin:0;line-height:1.8; }
+    .section-divider { height:1px;background:linear-gradient(90deg,transparent,#ffffff12,transparent); }
+    .lobby { padding-top:61px; }
+    .lobby-tools { display:flex; gap:9px; align-items:center; }
+    .search-box { display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#ffffff06;color:#8f8b9e; }
+    .search-box svg { width:15px;height:15px;flex:none; }
+    .search-box input { background:none;border:0;outline:0;color:#fff;width:145px;font-size:11px; }
+    .search-box input::placeholder { color:#817d8f; }
+    .filter-row { display:flex;gap:7px;margin-bottom:18px;flex-wrap:wrap; }
+    .filter { border:1px solid var(--line);border-radius:999px;background:#ffffff05;color:#aaa7b6;padding:6px 13px;font-size:10px;cursor:pointer;transition:.2s; }
+    .filter.active,.filter:hover { color:#e9e1ff;background:#9376ff1b;border-color:#9c82ff42; }
+    .rooms-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:15px; }
+    .room-card { border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#13131e;transition:.2s; }
+    .room-card:hover { transform:translateY(-3px);border-color:#ffffff24; }
+    .room-cover { height:139px;position:relative;display:flex;align-items:end;padding:13px;overflow:hidden; }
+    .room-cover:before,.room-cover:after { content:"";position:absolute;border-radius:50%;filter:blur(1px); }
+    .cover-movie { background:linear-gradient(145deg,#55385f,#241b3b 60%,#171528); }
+    .cover-movie:before { width:150px;height:150px;left:25px;top:-52px;background:#e58d8b66;box-shadow:0 0 65px #e3908555; }
+    .cover-movie:after { width:260px;height:60px;left:10%;bottom:-35px;background:#faac7e55;filter:blur(15px); }
+    .cover-game { background:linear-gradient(145deg,#1d5960,#17323d 58%,#191b2b); }
+    .cover-game:before { width:120px;height:120px;right:35px;top:-45px;background:#6ae0b866; }
+    .cover-game:after { width:100px;height:100px;left:55px;bottom:-60px;background:#d4cc7255; }
+    .cover-music { background:linear-gradient(145deg,#614034,#302034 57%,#211b33); }
+    .cover-music:before { width:150px;height:150px;left:37px;top:-62px;background:#f9cb8777; }
+    .cover-music:after { width:95px;height:95px;right:55px;bottom:-52px;background:#e77fa66c; }
+    .cover-chat { background:linear-gradient(145deg,#28365b,#1c2341 60%,#201c35); }
+    .cover-chat:before { width:165px;height:100px;left:55px;top:19px;background:#83adfb5c;border-radius:40%; }
+    .cover-chill { background:linear-gradient(145deg,#3d4c35,#202d2b 60%,#19242b); }
+    .cover-chill:before { width:150px;height:150px;right:35px;top:-59px;background:#aed67a59; }
+    .cover-board { background:linear-gradient(145deg,#49345d,#28213f 60%,#1f1d35); }
+    .cover-board:before { width:140px;height:140px;left:30px;top:-53px;background:#cb90ff6c; }
+    .cover-word { font-size:30px;font-weight:900;color:#fff9;z-index:1;text-shadow:0 3px 20px #0006;letter-spacing:-1px; }
+    .room-tag { position:absolute;top:11px;right:11px;border:1px solid #ffffff24;background:#10101877;backdrop-filter:blur(8px);border-radius:999px;padding:4px 8px;color:#f2eefe;font-size:9px; }
+    .online-dot { position:absolute;left:12px;top:15px;display:flex;align-items:center;gap:5px;color:#e4f7ef;font-size:9px; }
+    .online-dot i { width:6px;height:6px;background:#83e3c1;border-radius:50%; }
+    .room-info { padding:13px 15px 14px; }
+    .room-info h3 { font-size:14px;margin:0 0 5px; }
+    .room-info p { color:#918e9f;font-size:10px;margin:0 0 13px; }
+    .room-footer { display:flex;justify-content:space-between;align-items:center;border-top:1px solid #ffffff0a;padding-top:11px; }
+    .room-host { display:flex;align-items:center;gap:7px;color:#c3bfce;font-size:10px; }
+    .host-avatar { display:grid;place-items:center;width:23px;height:23px;border-radius:50%;background:#c9a6a2;color:#30232d;font-size:9px;font-weight:800; }
+    .join-link { color:#b8a6ff;font-size:10px;font-weight:700;cursor:pointer;background:none;border:0;padding:4px; }
+    .empty-state { display:none;color:#a4a1b4;text-align:center;padding:30px;border:1px dashed var(--line);border-radius:16px;font-size:13px; }
+    .how-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:22px;position:relative; }
+    .how-step { border:1px solid var(--line);background:#11111a;border-radius:19px;padding:23px 21px;min-height:152px; }
+    .step-no { color:#b9a7ff;font-weight:800;font-size:12px;background:#a68dff17;padding:6px 10px;border-radius:9px; }
+    .how-step h3 { font-size:14px;margin:18px 0 6px; }
+    .how-step p { font-size:11px;color:#9693a6;margin:0;line-height:1.8; }
+    .cta { margin:28px 0 72px;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:31px 35px;border-radius:22px;border:1px solid #a58aff28;background:radial-gradient(ellipse at 10% 100%,#7254dc24,transparent 50%),linear-gradient(115deg,#181624,#151521); }
+    .cta h2 { font-size:23px;margin:0 0 5px; }
+    .cta p { color:#a6a2b5;font-size:12px;margin:0; }
+    .faq { display:grid;grid-template-columns:.7fr 1.3fr;gap:65px;padding-bottom:80px; }
+    .faq-intro p { color:#9693a6;font-size:12px;max-width:280px; }
+    details { border-bottom:1px solid #ffffff12;padding:15px 0; }
+    summary { list-style:none;cursor:pointer;font-size:13px;font-weight:700;display:flex;justify-content:space-between;gap:12px; }
+    summary::-webkit-details-marker { display:none; }
+    summary:after { content:"＋";color:#b29cff;font-size:16px;line-height:1; }
+    details[open] summary:after { content:"−"; }
+    details p { font-size:11px;color:#a4a1b4;line-height:1.9;margin:11px 0 0;max-width:680px; }
+    footer { border-top:1px solid #ffffff0c;padding:22px 0 27px;color:#817e8e;font-size:10px; }
+    .footer-inner { display:flex;align-items:center;justify-content:space-between; }
+    .footer-brand { display:flex;align-items:center;gap:8px;color:#cac6d5;font-size:12px;font-weight:700; }
+    .footer-brand .brand-mark { width:25px;height:25px;border-radius:9px; }
+    .footer-links { display:flex;gap:17px; }
+    /* dialogs and demo room */
+    .modal-backdrop { display:none;position:fixed;inset:0;z-index:50;background:#05050ae0;backdrop-filter:blur(9px);align-items:center;justify-content:center;padding:18px; }
+    .modal-backdrop.open { display:flex; }
+    .dialog { width:min(430px,100%);border:1px solid #ffffff19;border-radius:23px;background:#151520;box-shadow:0 24px 90px #0009;padding:24px;position:relative;animation:pop .22s ease-out; }
+    @keyframes pop { from{transform:translateY(8px) scale(.98);opacity:0}to{transform:none;opacity:1} }
+    .close-x { width:31px;height:31px;display:grid;place-items:center;border:1px solid var(--line);background:#ffffff06;color:#c7c3d2;border-radius:10px;cursor:pointer;position:absolute;left:18px;top:18px; }
+    .dialog h2 { font-size:22px;margin:0 0 5px; }
+    .dialog > p { color:#9693a6;font-size:11px;margin:0 0 20px; }
+    .field-label { display:block;font-size:11px;color:#d2cedc;margin-bottom:7px; }
+    .text-input { display:block;width:100%;height:44px;border:1px solid #ffffff18;border-radius:12px;background:#0d0d15;color:#fff;padding:0 12px;outline:0;font-size:12px; }
+    .text-input:focus { border-color:#a58bff88;box-shadow:0 0 0 3px #9a7cff18; }
+    .privacy-options { display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0 18px; }
+    .privacy-option { display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#ffffff04;border-radius:12px;padding:11px;cursor:pointer;color:#b3afbd;font-size:10px; }
+    .privacy-option.selected { border-color:#aa94ff80;background:#9677ff12;color:#e9e3ff; }
+    .privacy-option input { accent-color:#9377ff; }
+    .dialog .btn { width:100%; }
+    .demo-label { font-size:9px;color:#9d99a8;margin-top:13px;text-align:center; }
+    .room-modal { padding:0;overflow:hidden;width:min(1120px,100%);height:min(720px,calc(100dvh - 28px));border-radius:22px;display:flex;flex-direction:column; }
+    .room-top { height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 17px;border-bottom:1px solid var(--line);flex:none; }
+    .room-top-left,.room-top-right { display:flex;align-items:center;gap:11px; }
+    .room-top-title { font-size:12px;font-weight:800; }
+    .room-id { color:#9e9bab;font-size:9px; }
+    .room-live { font-size:9px;color:#9ae6c9;background:#7ce0b812;border-radius:99px;padding:4px 8px; }
+    .room-layout { min-height:0;flex:1;display:grid;grid-template-columns:1fr 285px; }
+    .room-main { display:flex;flex-direction:column;padding:18px;min-width:0;gap:13px; }
+    .room-stage { flex:1;min-height:200px;border-radius:16px;position:relative;overflow:hidden;background:#222033;display:grid;place-items:center; }
+    .room-stage .room-illustration { position:absolute;inset:0; }
+    .room-stage.has-video .room-illustration { opacity:.22; }
+    .room-stage.has-video .stage-center { display:none; }
+    .video-grid { position:absolute;z-index:2;inset:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:8px;align-content:center; }
+    .video-tile { min-height:110px;position:relative;overflow:hidden;border:1px solid #ffffff24;border-radius:13px;background:linear-gradient(145deg,#343047,#1b1a27);box-shadow:0 8px 28px #0005;display:grid;place-items:center; }
+    .video-tile video { width:100%;height:100%;min-height:110px;max-height:100%;position:absolute;inset:0;object-fit:cover;background:#16151f; }
+    .video-tile .tile-avatar { width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#c6b3ff,#8068cf);color:#191522;font-weight:800;font-size:19px; }
+    .video-tile.has-video .tile-avatar { display:none; }
+    .video-tile .video-name { position:absolute;z-index:1;right:8px;bottom:7px;background:#0b0b13a8;padding:3px 7px;border-radius:7px;font-size:9px;color:#fff; }
+    .video-tile .audio-state { position:absolute;z-index:1;left:7px;bottom:7px;background:#0b0b13a8;padding:3px 6px;border-radius:7px;font-size:8px;color:#bfb9ce; }
+    .stage-center { position:relative;text-align:center;text-shadow:0 2px 18px #0009; }
+    .stage-center .avatar { width:58px;height:58px;margin:0 auto 10px;border:2px solid #ffffff88;font-size:19px; }
+    .stage-center strong { display:block;font-size:14px; }
+    .stage-center small { display:block;color:#e0dceb;font-size:10px;margin-top:3px; }
+    .stream-badge { position:absolute;right:12px;top:12px;background:#0b0b13a8;border:1px solid #ffffff1c;border-radius:9px;padding:5px 8px;font-size:9px;color:#d8d4df; }
+    .participant-strip { display:flex;gap:9px;overflow:auto; }
+    .participant { flex:1;min-width:100px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;background:#ffffff04;padding:9px; }
+    .participant .avatar { width:29px;height:29px;margin:0;border:0;font-size:10px;flex:none; }
+    .participant span { display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px; }
+    .participant small { display:block;color:#8d899b;font-size:8px; }
+    .room-controls { display:flex;align-items:center;justify-content:center;gap:9px; }
+    .room-control { height:38px;min-width:42px;padding:0 13px;border:1px solid #ffffff15;background:#ffffff08;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:7px;color:#d7d3df;font-size:10px;cursor:pointer; }
+    .room-control svg { width:15px;height:15px; }
+    .room-control.on { color:#eae5ff;border-color:#aa93ff55;background:#9e7fff20; }
+    .room-control.off { color:#ffb6bc;background:#f865701d;border-color:#f8657044; }
+    .room-control.leave { background:#ed526429;border-color:#f76b794d;color:#ffb8bf; }
+    .chat-panel { border-right:1px solid var(--line);min-height:0;display:flex;flex-direction:column;background:#101019; }
+    .chat-head { padding:14px 15px;border-bottom:1px solid var(--line);font-size:11px;font-weight:800;display:flex;justify-content:space-between;align-items:center; }
+    .chat-head small { color:#9290a0;font-weight:400;font-size:9px; }
+    .chat-messages { min-height:0;flex:1;overflow:auto;padding:13px 12px;display:flex;flex-direction:column;gap:12px; }
+    .chat-message { font-size:10px;line-height:1.7; }
+    .chat-message b { color:#d0c1ff;font-size:9px;display:block;margin-bottom:2px; }
+    .chat-message.self b { color:#8cddbf; }
+    .chat-message p { margin:0;color:#d5d2de; }
+    .system-message { text-align:center;color:#828091;font-size:8px;padding:3px 0; }
+    .chat-compose { padding:10px;border-top:1px solid var(--line);display:flex;gap:7px; }
+    .chat-compose input { flex:1;min-width:0;background:#1a1a26;border:1px solid #ffffff12;border-radius:10px;color:#fff;padding:0 10px;outline:0;font-size:10px; }
+    .chat-compose button { width:36px;height:36px;border:0;border-radius:10px;background:#8566f4;color:#fff;display:grid;place-items:center;cursor:pointer; }
+    .chat-compose svg { width:15px;height:15px; }
+    .toast { position:fixed;z-index:80;bottom:25px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#292538;border:1px solid #ffffff1c;color:#f1edf9;padding:10px 15px;border-radius:12px;font-size:11px;box-shadow:0 14px 36px #0008;transition:.22s;white-space:nowrap; }
+    .toast.show { opacity:1;transform:translate(-50%,0); }
+    @media(max-width:950px) {
+      .hero { gap:32px;padding-top:55px; }
+      .floating-note { left:-17px; }
+      .activity-grid { grid-template-columns:repeat(2,1fr); }
+    }
+    @media(max-width:700px) {
+      .wrap,.topbar-inner { width:min(100% - 30px,560px); }
+      .topbar { height:66px; }
+      .nav { display:none; }
+      .nav-actions .btn-ghost { display:none; }
+      .nav-actions .btn { min-height:38px;padding:0 12px;font-size:11px; }
+      .brand { font-size:17px; }
+      .hero { display:flex;flex-direction:column;align-items:stretch;gap:32px;padding:44px 0 47px; }
+      .hero-copy { max-width:none; }
+      h1 { font-size:42px; }
+      .hero-copy>p { font-size:14px; }
+      .hero-art { margin:0 5px;transform:none;padding:12px;border-radius:22px; }
+      .showcase-stage { height:240px; }
+      .floating-note { left:-6px;bottom:78px; }
+      .metrics { justify-content:space-between;gap:8px; }
+      .metric { gap:6px; }
+      .metric-icon { width:30px;height:30px; }
+      .metric strong { font-size:11px; }
+      .metric span { font-size:9px; }
+      .section { padding:50px 0; }
+      .section-head { display:block; }
+      .section-head p { margin-top:9px; }
+      h2 { font-size:24px; }
+      .activity-grid { gap:10px; }
+      .activity-card { min-height:167px;padding:15px; }
+      .activity-icon { margin-bottom:17px; }
+      .lobby-tools { margin-top:15px; }
+      .search-box { flex:1; }
+      .search-box input { width:100%; }
+      .rooms-grid { grid-template-columns:1fr; }
+      .room-cover { height:155px; }
+      .how-grid { grid-template-columns:1fr;gap:10px; }
+      .how-step { min-height:0;padding:17px; }
+      .how-step h3 { margin-top:13px; }
+      .cta { display:block;padding:23px;margin:15px 0 55px; }
+      .cta .btn { margin-top:17px; }
+      .faq { grid-template-columns:1fr;gap:20px;padding-bottom:55px; }
+      .faq-intro p { max-width:450px; }
+      .footer-inner { gap:12px;flex-wrap:wrap; }
+      .room-modal { height:calc(100dvh - 16px); }
+      .room-layout { grid-template-columns:1fr;grid-template-rows:minmax(240px,1fr) 210px; }
+      .room-main { padding:10px;gap:8px; }
+      .room-stage { min-height:150px; }
+      .participant-strip { display:none; }
+      .room-control { min-width:38px;padding:0 10px;height:36px; }
+      .room-control span { display:none; }
+      .chat-panel { border-right:0;border-top:1px solid var(--line); }
+      .chat-messages { padding:8px 12px; }
+      .room-top { height:48px;padding:0 11px; }
+      .room-top-right .room-id { display:none; }
+    }
+    @media(prefers-reduced-motion:reduce) { *,*:before,*:after { scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#top" aria-label="سامیکا، صفحهٔ اصلی"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12h.01M12 12h.01M15 12h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></span>سامیکا <span style="font-size:11px;color:#aaa4be">Samika</span></a>
+      <nav class="nav" aria-label="ناوبری اصلی"><a href="#activities">امکانات</a><a href="#rooms">اتاق‌ها</a><a href="#how">چطور کار می‌کند؟</a><a href="#faq">پرسش‌ها</a></nav>
+      <div class="nav-actions"><button class="btn btn-ghost" data-open-create>ورود به اتاق</button><button class="btn btn-primary" data-open-create>ساخت اتاق رایگان</button></div>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="wrap hero">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-dot"></span>دورهمی، هرجا که هستید</div>
+        <h1>فاصله‌ها را کم کن،<br><span class="gradient-text">یک اتاق بساز.</span></h1>
+        <p>فیلم ببینید، بازی کنید و گپ بزنید؛ همه در یک پاتوق آنلاین که با یک لینک، دوستانتان را دور هم جمع می‌کند.</p>
+        <div class="hero-buttons"><button class="btn btn-primary btn-lg" data-open-create>اتاق خودم را بساز <span aria-hidden="true">←</span></button><a class="btn btn-ghost btn-lg" href="#rooms">دیدن اتاق‌های عمومی</a></div>
+        <div class="under-note"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m4 10 4 4 8-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>رایگان برای شروع <span>·</span> بدون نصب برنامه</div>
+        <div class="metrics">
+          <div class="metric"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m10 9 5 3-5 3V9Z" fill="currentColor"/></svg></span><div><strong>تماشای هم‌زمان</strong><span>یک قاب برای همه</span></div></div>
+          <div class="metric"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M7 11V7a5 5 0 0 1 10 0v4M5 11h14v9H5v-9Z" stroke="currentColor" stroke-width="1.7"/><path d="M12 14v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><div><strong>اتاق خصوصی</strong><span>فقط با لینک دعوت</span></div></div>
+          <div class="metric"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M8 12h8M12 8v8M4 7h16v12H4V7Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 4h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span><div><strong>بازی گروهی</strong><span>همین‌جا در مرورگر</span></div></div>
+        </div>
+      </div>
+      <div class="hero-art" aria-label="پیش‌نمایش یک اتاق دورهمی آنلاین">
+        <div class="showcase-head"><span>اتاق فیلم جمعه‌شب</span><span class="live-pill"><i></i>۴ نفر آنلاین</span></div>
+        <div class="showcase-stage">
+          <svg class="room-illustration" viewBox="0 0 900 540" preserveAspectRatio="xMidYMid slice" role="img" aria-label="اتاق نشیمن گرم در شب">
+            <defs><linearGradient id="wall" x2="0" y2="1"><stop stop-color="#514568"/><stop offset="1" stop-color="#28263d"/></linearGradient><linearGradient id="window" x2="1" y2="1"><stop stop-color="#415d7b"/><stop offset="1" stop-color="#b66e80"/></linearGradient><linearGradient id="floor" x2="0" y2="1"><stop stop-color="#433747"/><stop offset="1" stop-color="#241e2e"/></linearGradient><linearGradient id="sofa" x2="0" y2="1"><stop stop-color="#b67c79"/><stop offset="1" stop-color="#714d67"/></linearGradient><radialGradient id="glow"><stop stop-color="#ffcf96" stop-opacity=".8"/><stop offset="1" stop-color="#ffcf96" stop-opacity="0"/></radialGradient></defs>
+            <rect width="900" height="540" fill="url(#wall)"/><rect x="0" y="382" width="900" height="158" fill="url(#floor)"/>
+            <circle cx="655" cy="220" r="220" fill="url(#glow)" opacity=".3"/>
+            <rect x="562" y="67" width="245" height="240" rx="9" fill="#242239" stroke="#ddc2a5" stroke-width="12"/><rect x="578" y="83" width="213" height="208" rx="3" fill="url(#window)"/>
+            <path d="M578 225 639 161l47 46 41-66 64 70v80H578Z" fill="#363653" opacity=".76"/><path d="M685 83h4v208h-4zM578 182h213v4H578z" fill="#dfc3a4" opacity=".9"/>
+            <circle cx="741" cy="121" r="22" fill="#f8d9a5" opacity=".85"/><circle cx="741" cy="121" r="38" fill="#f8d9a5" opacity=".08"/>
+            <path d="M85 382h245l-20-143H114Z" fill="#d1ad8a" opacity=".12"/><path d="M94 380 125 240m167 140-23-140" stroke="#d6b798" stroke-width="8" opacity=".7"/><path d="M103 241h176" stroke="#efcba5" stroke-width="14" stroke-linecap="round"/>
+            <ellipse cx="458" cy="438" rx="290" ry="72" fill="#9b7082" opacity=".27"/><ellipse cx="458" cy="438" rx="236" ry="51" fill="#70576f" opacity=".35"/>
+            <rect x="256" y="296" width="389" height="145" rx="35" fill="url(#sofa)"/><rect x="231" y="323" width="67" height="112" rx="25" fill="#91647a"/><rect x="604" y="323" width="67" height="112" rx="25" fill="#835d76"/><path d="M319 304v125m126-125v124m117-124v125" stroke="#e2af9c" stroke-opacity=".25" stroke-width="3"/>
+            <rect x="350" y="322" width="73" height="61" rx="17" transform="rotate(-8 350 322)" fill="#e0bd87"/><rect x="478" y="320" width="80" height="68" rx="18" transform="rotate(8 478 320)" fill="#a7b5a2"/>
+            <path d="M720 383V284m0 12-37-24m37 13 31-34m-31 21 42-2" stroke="#62705e" stroke-width="11" stroke-linecap="round"/><path d="M680 385h83l-11 15h-61Z" fill="#705066"/><path d="M695 305c-32-25-18-58 6-48 10-34 45-23 39 1 28-15 46 20 19 37" fill="#7e9877"/>
+            <rect x="0" y="0" width="900" height="540" fill="#171528" opacity=".12"/>
+          </svg>
+          <div class="stage-shade"></div>
+          <div class="stage-label"><div><strong>شبِ فیلم و پاپ‌کورن 🍿</strong><small>همه دارن با هم تماشا می‌کنن</small></div><div class="avatar-stack"><span class="avatar">ن</span><span class="avatar">م</span><span class="avatar">س</span><span class="avatar avatar-count">+۱</span></div></div>
+        </div>
+        <div class="showcase-tools"><div class="tool-buttons"><span class="tool"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="3" width="14" height="18" rx="7" stroke="currentColor" stroke-width="1.7"/><path d="M3 11v1a9 9 0 0 0 18 0v-1" stroke="currentColor" stroke-width="1.7"/><path d="M12 21v-3" stroke="currentColor" stroke-width="1.7"/></svg></span><span class="tool"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 5-3v10l-5-3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span><span class="tool"><svg viewBox="0 0 24 24" fill="none"><path d="M5 5h14v14H5zM9 9h.01M15 9h.01M8 14c2 2 6 2 8 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></span></div><span class="showcase-caption">همه‌چیز برای یک شب خوب آماده‌ست</span><span class="mini-play"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="m8 5 11 7-11 7V5Z"/></svg></span></div>
+        <div class="floating-note"><div class="note-line"><span class="music-dot">♫</span><span><b>صدای دورهمی</b><br>روشن و آمادهٔ گپ</span></div></div>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+    <section class="wrap section" id="activities">
+      <div class="section-head"><div><span class="section-kicker">همه‌چیز یک‌جا</span><h2>برای باهم‌بودن، بهانه کم نمی‌آریم</h2></div><p>یک لینک بفرست و همان‌جا هر کاری دلتان می‌خواهد انجام دهید.</p></div>
+      <div class="activity-grid">
+        <article class="activity-card" style="--icon:#c9b8ff;--icon-bg:#9677ff1d;--glow:#9677ff"><div class="activity-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m10 9 5 3-5 3V9Z" fill="currentColor"/></svg></div><h3>تماشای دسته‌جمعی</h3><p>ویدئو یا صفحه‌ات را بیاورید و هم‌زمان با هم تماشا کنید.</p></article>
+        <article class="activity-card" style="--icon:#91e7c7;--icon-bg:#69d6ad19;--glow:#69d6ad"><div class="activity-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M6 7h12a3 3 0 0 1 3 3v7a2 2 0 0 1-2 2h-1.3a2 2 0 0 1-1.4-.6L14 16h-4l-2.3 2.4a2 2 0 0 1-1.4.6H5a2 2 0 0 1-2-2v-7a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.7"/><path d="M7 11v4m-2-2h4m7-1h.01M18 14h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><h3>بازی با رفقا</h3><p>بازی‌های سبک و سرگرم‌کننده برای رقابت‌های دوستانه.</p></article>
+        <article class="activity-card" style="--icon:#ffc38b;--icon-bg:#f2ad7719;--glow:#f2ad77"><div class="activity-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M5 5h14v14H5zM8 9h.01M16 9h.01M8 14c2.1 2.2 5.9 2.2 8 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M8 2v3m8-3v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div><h3>صدا و تصویر</h3><p>چهره‌ها و خنده‌ها را کنار صفحهٔ مشترک داشته باشید.</p></article>
+        <article class="activity-card" style="--icon:#8ec9ff;--icon-bg:#68aaf31b;--glow:#68aaf3"><div class="activity-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8m-4-4v4m-4-9 2.5-2.5L13 11l2-2 2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h3>اشتراک‌گذاری صفحه</h3><p>عکس، ویدئو یا هر چیزی را که روی صفحه‌ات داری نشان بده.</p></article>
+      </div>
+    </section>
+
+    <div class="section-divider"></div>
+    <section class="wrap section lobby" id="rooms">
+      <div class="section-head"><div><span class="section-kicker">پاتوق‌ها</span><h2>یک اتاق انتخاب کن و سلام بده</h2></div><div class="lobby-tools"><label class="search-box"><svg viewBox="0 0 24 24" fill="none"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="1.7"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><input id="roomSearch" type="search" placeholder="جست‌وجوی اتاق..." aria-label="جست‌وجوی اتاق"></label><button class="btn btn-primary" data-open-create>+ ساخت اتاق</button></div></div>
+      <div class="filter-row" role="group" aria-label="دسته‌بندی اتاق‌ها"><button class="filter active" data-filter="all">همه</button><button class="filter" data-filter="movie">فیلم و ویدئو</button><button class="filter" data-filter="game">بازی</button><button class="filter" data-filter="chat">گپ‌وگفت</button></div>
+      <div class="rooms-grid" id="roomsGrid">
+        <article class="room-card" data-category="movie" data-name="شب فیلم و پاپ کورن"><div class="room-cover cover-movie"><span class="room-tag">🎬 تماشای فیلم</span><span class="online-dot"><i></i> ۱۲ نفر</span><span class="cover-word">MOVIE<br>NIGHT</span></div><div class="room-info"><h3>شب فیلم و پاپ‌کورن</h3><p>یک فیلم خوب، حال خوب‌تر 🍿</p><div class="room-footer"><span class="room-host"><i class="host-avatar">س</i>ساختهٔ سارا</span><button class="join-link" data-join="شب فیلم و پاپ‌کورن">ورود به اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="game" data-name="اتاق بازی نیمه شب"><div class="room-cover cover-game"><span class="room-tag">🎮 بازی گروهی</span><span class="online-dot"><i></i> ۶ نفر</span><span class="cover-word">GAME<br>ON!</span></div><div class="room-info"><h3>اتاق بازی نیمه‌شب</h3><p>بازنده دور بعدی اسنک میاره 😄</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#9fd4be">آ</i>ساختهٔ آرمان</span><button class="join-link" data-join="اتاق بازی نیمه‌شب">ورود به اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="chat" data-name="کافه گفتگو"><div class="room-cover cover-music"><span class="room-tag">☕ گپ‌وگفت</span><span class="online-dot"><i></i> ۴ نفر</span><span class="cover-word">SLOW<br>DOWN</span></div><div class="room-info"><h3>کافهٔ گفت‌وگو</h3><p>یه چای بردار، از روزت بگو ☕</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#e5c084">م</i>ساختهٔ مهسا</span><button class="join-link" data-join="کافهٔ گفت‌وگو">ورود به اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="chat" data-name="دورهمی کتابخوانی"><div class="room-cover cover-chat"><span class="room-tag">📚 کتاب‌خوانی</span><span class="online-dot"><i></i> ۸ نفر</span><span class="cover-word">PAGE<br>TURNERS</span></div><div class="room-info"><h3>دورهمی کتاب‌خوانی</h3><p>این هفته: داستان‌های کوتاه</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#b9c1e9">ر</i>ساختهٔ رها</span><button class="join-link" data-join="دورهمی کتاب‌خوانی">ورود به اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="game" data-name="بردگیم و خنده"><div class="room-cover cover-board"><span class="room-tag">🃏 بردگیم</span><span class="online-dot"><i></i> ۵ نفر</span><span class="cover-word">PLAY<br>TOGETHER</span></div><div class="room-info"><h3>بردگیم و خنده</h3><p>قانون اول: زیادی جدی نگیریم!</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#d1ade7">ن</i>ساختهٔ نیما</span><button class="join-link" data-join="بردگیم و خنده">ورود به اتاق ←</button></div></div></article>
+        <article class="room-card" data-category="movie" data-name="موسیقی برای تمرکز"><div class="room-cover cover-chill"><span class="room-tag">🎧 موسیقی</span><span class="online-dot"><i></i> ۳ نفر</span><span class="cover-word">LOFI<br>LOUNGE</span></div><div class="room-info"><h3>موسیقی برای تمرکز</h3><p>صدای کم، تمرکز بیشتر 🌿</p><div class="room-footer"><span class="room-host"><i class="host-avatar" style="background:#acd099">ک</i>ساختهٔ کیان</span><button class="join-link" data-join="موسیقی برای تمرکز">ورود به اتاق ←</button></div></div></article>
+      </div>
+      <div class="empty-state" id="emptyState">اتاقی با این مشخصات پیدا نکردیم. عبارت دیگری را امتحان کن.</div>
+    </section>
+
+    <section class="wrap section" id="how">
+      <div class="section-head"><div><span class="section-kicker">سه قدم تا دورهمی</span><h2>بی‌دردسر شروع کنید</h2></div><p>لازم نیست چیزی نصب کنید یا کلی تنظیمات انجام بدهید.</p></div>
+      <div class="how-grid"><article class="how-step"><span class="step-no">قدم ۰۱</span><h3>اتاقت را بساز</h3><p>اسم و حال‌وهوای اتاقت را انتخاب کن؛ همین.</p></article><article class="how-step"><span class="step-no">قدم ۰۲</span><h3>لینک را بفرست</h3><p>لینک دعوت را برای آدم‌های خودت بفرست.</p></article><article class="how-step"><span class="step-no">قدم ۰۳</span><h3>شروع کنید</h3><p>تماشا، بازی یا گپ؛ انتخاب با شماست.</p></article></div>
+    </section>
+
+    <section class="wrap"><div class="cta"><div><h2>جای همه دور هم خالیه؟</h2><p>اتاقت رو بساز و لینک دعوت رو همین الان بفرست.</p></div><button class="btn btn-primary btn-lg" data-open-create>شروع یک دورهمی <span aria-hidden="true">←</span></button></div></section>
+
+    <section class="wrap faq" id="faq"><div class="faq-intro"><span class="section-kicker">سوال‌های پرتکرار</span><h2>چیزهایی که<br>شاید بپرسی</h2><p>پاسخ چند سوال برای شروع راحت‌تر.</p></div><div><details><summary>برای استفاده باید برنامه نصب کنم؟</summary><p>سامیکا در مرورگر اجرا می‌شود و نصب نمی‌خواهد. برای تماس زنده، فایل‌ها را روی localhost یا یک سایت HTTPS اجرا کنید و لینک اتاق را برای دوستان بفرستید.</p></details><details><summary>می‌توانم اتاق را خصوصی کنم؟</summary><p>اتاق با یک کد تصادفی ساخته می‌شود و ورود از طریق لینک دعوت است. در این نسخه فهرست اتاق‌های عمومی، حساب کاربری یا رمز جداگانه وجود ندارد.</p></details><details><summary>آیا دوستانم تصویر و صدای هم را می‌بینند؟</summary><p>بله. بعد از ورود به اتاق، دکمهٔ میکروفن یا دوربین را بزنید و اجازهٔ مرورگر را بدهید. رسانه مستقیم با WebRTC بین مرورگرها منتقل می‌شود؛ سامیکا آن را ضبط نمی‌کند.</p></details><details><summary>همه می‌توانند ویدئو را هم‌زمان تماشا کنند؟</summary><p>برای نمایش ویدئو، شیر اسکرین را بزنید و زبانه یا پنجرهٔ ویدئو را انتخاب کنید. صدای زبانه را هم در پنجرهٔ اشتراک‌گذاری فعال کنید. پخش‌کنندهٔ همگام‌شدهٔ داخلی هنوز در این نسخه نیست.</p></details></div></section>
+  </main>
+
+  <footer><div class="wrap footer-inner"><a class="footer-brand" href="#top"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span>سامیکا · Samika</a><span>تهیه‌شده توسط سام کاظمی ✦</span><div class="footer-links"><a href="#activities">امکانات</a><a href="#rooms">اتاق‌ها</a><a href="#faq">پرسش‌ها</a></div></div></footer>
+
+  <div class="modal-backdrop" id="createBackdrop" aria-hidden="true"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="createTitle"><button class="close-x" data-close-create aria-label="بستن">×</button><h2 id="createTitle">اتاقت رو بساز ✨</h2><p>یک اسم انتخاب کن؛ دورهمی از همین‌جا شروع می‌شه.</p><form id="createForm"><label class="field-label" for="roomName">اسم اتاق</label><input class="text-input" id="roomName" maxlength="42" placeholder="مثلاً: جمعه‌شب با بچه‌ها" autocomplete="off"><label class="field-label" for="displayName" style="margin-top:14px">اسم نمایشی شما</label><input class="text-input" id="displayName" maxlength="28" placeholder="مثلاً: سام" autocomplete="nickname"><span class="field-label" style="margin-top:15px">چه کسانی می‌تونن وارد بشن؟</span><div class="privacy-options"><label class="privacy-option selected"><input type="radio" name="privacy" value="private" checked> خصوصی · فقط با لینک</label><label class="privacy-option"><input type="radio" name="privacy" value="public"> عمومی · قابل کشف</label></div><button class="btn btn-primary btn-lg" type="submit">ساخت اتاق و ادامه ←</button></form></section></div>
+
+  <div class="modal-backdrop" id="roomBackdrop" aria-hidden="true"><section class="dialog room-modal" role="dialog" aria-modal="true" aria-label="اتاق سامیکا"><div class="room-top"><div class="room-top-left"><span class="brand-mark" style="width:27px;height:27px;border-radius:9px"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><span class="room-top-title" id="activeRoomTitle">اتاق دورهمی</span><span class="room-live" id="networkStatus">● در حال اتصال…</span></div><div class="room-top-right"><span class="room-id" id="roomId">کد اتاق —</span><button class="btn btn-ghost" style="min-height:31px;padding:0 10px;font-size:9px" id="inviteBtn">کپی لینک دعوت</button><button class="close-x" id="closeRoom" aria-label="خروج از اتاق" style="position:static">×</button></div></div><div class="room-layout"><div class="room-main"><div class="room-stage"><svg class="room-illustration" viewBox="0 0 900 540" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="roomwall" x2="0" y2="1"><stop stop-color="#514568"/><stop offset="1" stop-color="#28263d"/></linearGradient><linearGradient id="roomfloor" x2="0" y2="1"><stop stop-color="#433747"/><stop offset="1" stop-color="#241e2e"/></linearGradient><radialGradient id="roomlight"><stop stop-color="#ffcf96" stop-opacity=".8"/><stop offset="1" stop-color="#ffcf96" stop-opacity="0"/></radialGradient></defs><rect width="900" height="540" fill="url(#roomwall)"/><rect y="380" width="900" height="160" fill="url(#roomfloor)"/><circle cx="660" cy="230" r="240" fill="url(#roomlight)" opacity=".28"/><rect x="567" y="68" width="245" height="240" rx="8" fill="#35445e" stroke="#ddc2a5" stroke-width="12"/><path d="M580 242 650 160l48 46 38-65 65 72v80H580Z" fill="#363653"/><rect x="690" y="80" width="4" height="220" fill="#dfc3a4"/><ellipse cx="455" cy="438" rx="284" ry="72" fill="#9b7082" opacity=".28"/><rect x="256" y="296" width="389" height="145" rx="35" fill="#9d6c78"/><rect x="233" y="325" width="65" height="110" rx="23" fill="#91647a"/><rect x="605" y="325" width="65" height="110" rx="23" fill="#835d76"/><path d="M319 304v125m126-125v124m117-124v125" stroke="#e2af9c" stroke-opacity=".25" stroke-width="3"/><path d="M720 383V284m0 12-37-24m37 13 31-34m-31 21 42-2" stroke="#718768" stroke-width="11" stroke-linecap="round"/><path d="M681 385h83l-11 15h-61Z" fill="#705066"/><path d="M695 305c-32-25-18-58 6-48 10-34 45-23 39 1 28-15 46 20 19 37" fill="#7e9877"/></svg><div class="video-grid" id="videoGrid"></div><span class="stream-badge" id="roomModeBadge">✦ سامیکا · ارتباط زنده</span><div class="stage-center" id="stageEmpty"><span class="avatar">س</span><strong>خوش اومدی به سامیکا!</strong><small>میکروفن یا دوربین را روشن کن و دوستات را دعوت کن</small></div></div><div class="participant-strip" id="participantStrip"></div><div class="room-controls"><button class="room-control" data-device="audio" aria-label="روشن و خاموش کردن میکروفن"><svg viewBox="0 0 24 24" fill="none"><rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.7"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3m-4 0h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>روشن‌کردن میکروفن</span></button><button class="room-control" data-device="video" aria-label="روشن و خاموش کردن دوربین"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 5-3v10l-5-3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>روشن‌کردن دوربین</span></button><button class="room-control" data-share aria-label="شروع یا توقف اشتراک‌گذاری صفحه"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8m-4-4v4m-4-9 2.5-2.5L13 11l2-2 2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>شیر اسکرین</span></button><button class="room-control" data-toggle="chat" aria-label="نمایش چت"><svg viewBox="0 0 24 24" fill="none"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.8-3.3A7.5 7.5 0 1 1 20 11.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M8 11h.01M12 11h.01M16 11h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span>چت</span></button><button class="room-control leave" id="leaveRoom" aria-label="خروج"><span>خروج</span><svg viewBox="0 0 24 24" fill="none"><path d="M10 17l5-5-5-5m5 5H3m8-9h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div><aside class="chat-panel" id="chatPanel"><div class="chat-head"><span>گپ دورهمی</span><small id="chatStatus">اتاق سامیکا</small></div><div class="chat-messages" id="chatMessages"><div class="system-message">به اتاق خوش اومدی! دوستات رو دعوت کن 👋</div></div><form class="chat-compose" id="chatForm"><input id="chatInput" maxlength="250" placeholder="یه چیزی بنویس..." aria-label="پیام چت"><button type="submit" aria-label="فرستادن پیام"><svg viewBox="0 0 24 24" fill="none"><path d="m21 3-7.2 18-3.7-7.1L3 10.2 21 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.1 13.9 4.5-4.5" stroke="currentColor" stroke-width="1.7"/></svg></button></form></aside></div></section></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
