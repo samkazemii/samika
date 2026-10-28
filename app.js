@@ -3,6 +3,12 @@
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const i18n = window.SamikaI18n;
+  const t = (source, values) => i18n?.t(source, values) || source;
+  function setLocalizedText(element, source, values) {
+    if (i18n) i18n.setText(element, source, values);
+    else if (element) element.textContent = t(source, values);
+  }
   const createBackdrop = $("#createBackdrop");
   const roomBackdrop = $("#roomBackdrop");
   const toast = $("#toast");
@@ -16,7 +22,7 @@
   let activeFilter = "all";
   let selectedPrivacy = "private";
   let toastTimer;
-  let activeRoomName = "اتاق سامیکا";
+  let activeRoomName = t("اتاق سامیکا");
   let activeRoomId = "";
   let displayName = "";
   let selfId = "";
@@ -32,7 +38,7 @@
   $("#displayName").value = displayName;
 
   function announce(message) {
-    toast.textContent = message;
+    setLocalizedText(toast, message);
     toast.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
@@ -60,7 +66,7 @@
   function getDisplayName() {
     const input = $("#displayName").value.trim();
     if (input) displayName = input.slice(0, 28);
-    if (!displayName) displayName = `مهمان ${Math.floor(Math.random() * 90) + 10}`;
+    if (!displayName) displayName = t("مهمان {{n}}", { n: Math.floor(Math.random() * 90) + 10 });
     try { localStorage.setItem("samika-display-name", displayName); } catch {}
     return displayName;
   }
@@ -72,7 +78,7 @@
   }
   function setNetworkStatus(text, connected = false) {
     const status = $("#networkStatus");
-    status.textContent = text;
+    setLocalizedText(status, text);
     status.style.color = connected ? "#9ae6c9" : "#ffc586";
   }
   function send(payload) {
@@ -84,9 +90,9 @@
     const button = $(`[data-device="${kind}"]`);
     button.classList.toggle("on", enabled);
     button.classList.toggle("off", !enabled);
-    $("span", button).textContent = kind === "audio"
+    $("span", button).textContent = t(kind === "audio"
       ? (enabled ? "میکروفن روشن" : "روشن‌کردن میکروفن")
-      : (enabled ? "دوربین روشن" : "روشن‌کردن دوربین");
+      : (enabled ? "دوربین روشن" : "روشن‌کردن دوربین"));
   }
   function currentOutgoingVideo() {
     const shareVideo = shareStream?.getVideoTracks().find(track => track.readyState === "live");
@@ -122,10 +128,10 @@
     $("#chatMessages").append(item);
     $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
   }
-  function addSystemMessage(text) {
+  function addSystemMessage(text, values) {
     const item = document.createElement("div");
     item.className = "system-message";
-    item.textContent = text;
+    setLocalizedText(item, text, values);
     $("#chatMessages").append(item);
     $("#chatMessages").scrollTop = $("#chatMessages").scrollHeight;
   }
@@ -137,13 +143,15 @@
   function createVideoTile(id, name, local = false) {
     let tile = videoTiles.get(id);
     if (tile) {
-      tile.name.textContent = local ? `${name} · شما` : name;
+      if (local) setLocalizedText(tile.name, "{{name}} · شما", { name });
+      else tile.name.textContent = name;
       return tile;
     }
     const root = document.createElement("div"); root.className = "video-tile"; root.dataset.kind = "none";
     const avatar = document.createElement("span"); avatar.className = "tile-avatar"; avatar.textContent = name.trim()[0] || "؟";
-    const video = document.createElement("video"); video.autoplay = true; video.playsInline = true; video.muted = true;
-    const label = document.createElement("span"); label.className = "video-name"; label.textContent = local ? `${name} · شما` : name;
+    const video = document.createElement("video"); video.autoplay = true; video.playsInline = true; video.setAttribute("webkit-playsinline", ""); video.muted = true;
+    const label = document.createElement("span"); label.className = "video-name";
+    if (local) setLocalizedText(label, "{{name}} · شما", { name }); else label.textContent = name;
     const audioState = document.createElement("span"); audioState.className = "audio-state";
     const audio = document.createElement("audio"); audio.autoplay = true; audio.hidden = true;
     root.append(avatar, video, label, audioState, audio);
@@ -176,13 +184,21 @@
     } else {
       tile.audio.pause(); tile.audio.srcObject = null;
     }
-    tile.audioState.textContent = local
+    const audioState = local
       ? (localAudioTrack?.enabled ? "میکروفن روشن" : "")
       : (audioTracks.length ? "صدا متصل" : "");
+    if (audioState) setLocalizedText(tile.audioState, audioState); else tile.audioState.textContent = "";
     $(".room-stage").classList.toggle("has-video", [...videoTiles.values()].some(entry => !entry.video.hidden));
     refreshVideoGridLayout();
     return tile;
   }
+  function unlockRemoteAudio() {
+    for (const tile of videoTiles.values()) {
+      if (!tile.local && tile.audio.srcObject) tile.audio.play().catch(() => {});
+    }
+  }
+  document.addEventListener("pointerup", unlockRemoteAudio, { passive: true });
+  document.addEventListener("touchend", unlockRemoteAudio, { passive: true });
   function removeVideoTile(id) {
     const tile = videoTiles.get(id);
     if (!tile) return;
@@ -194,7 +210,7 @@
   function setRemoteVideoMode(id, mode) {
     const safeMode = mode === "screen" || mode === "camera" ? mode : "none";
     videoModes.set(id, safeMode);
-    updateVideoTile(id, peerNames.get(id) || "مهمان", remoteStreams.get(id), false);
+    updateVideoTile(id, peerNames.get(id) || t("مهمان"), remoteStreams.get(id), false);
   }
   function refreshLocalTile() {
     if (!selfId) return;
@@ -211,8 +227,9 @@
       const avatar = document.createElement("i"); avatar.className = "avatar"; avatar.textContent = participant.name.trim()[0] || "؟";
       if (index % 2) avatar.style.background = "#9fd4be";
       const text = document.createElement("div");
-      const name = document.createElement("span"); name.textContent = participant.local ? `${participant.name} · شما` : participant.name;
-      const state = document.createElement("small"); state.textContent = participant.local ? "در این دستگاه" : "در اتاق";
+      const name = document.createElement("span");
+      if (participant.local) setLocalizedText(name, "{{name}} · شما", { name: participant.name }); else name.textContent = participant.name;
+      const state = document.createElement("small"); setLocalizedText(state, participant.local ? "در این دستگاه" : "در اتاق");
       text.append(name, state); item.append(avatar, text); strip.append(item);
     });
   }
@@ -223,7 +240,7 @@
     removeVideoTile(peerId); updateParticipants();
   }
 
-  async function ensurePeer(peerId, name = peerNames.get(peerId) || "مهمان") {
+  async function ensurePeer(peerId, name = peerNames.get(peerId) || t("مهمان")) {
     if (peerConnections.has(peerId)) return peerConnections.get(peerId);
     peerNames.set(peerId, name);
     const config = window.SAMIKA_RTC_CONFIG || { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
@@ -351,7 +368,7 @@
       console.error("Samika media permission failed", error);
       if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") announce("اجازهٔ استفاده از میکروفن یا دوربین داده نشد");
       else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") announce("میکروفن یا دوربین روی دستگاه پیدا نشد");
-      else announce("اتصال رسانه انجام نشد؛ سامیکا را در Chrome یا Edge و با HTTPS باز کن");
+      else announce("اتصال رسانه انجام نشد؛ سامیکا را با HTTPS و در مرورگری به‌روز باز کن");
     } finally { button.disabled = false; }
   }
   async function stopScreenShare() {
@@ -370,7 +387,7 @@
     }
     oldStream.getTracks().forEach(track => { track.onended = null; track.stop(); });
     send({ type: "video-mode", mode: cameraTrack?.readyState === "live" && cameraTrack.enabled ? "camera" : "none" });
-    const button = $("[data-share]"); button.classList.remove("on", "off"); $("span", button).textContent = "شیر اسکرین";
+    const button = $("[data-share]"); button.classList.remove("on", "off"); $("span", button).textContent = t("شیر اسکرین");
     refreshLocalTile();
     stoppingShare = false;
     announce("شیر اسکرین متوقف شد");
@@ -382,7 +399,7 @@
     }
     if (shareStream) { await stopScreenShare(); return; }
     if (!navigator.mediaDevices?.getDisplayMedia) {
-      announce("برای شیر اسکرین، سامیکا را در Chrome یا Edge و با HTTPS باز کن");
+      announce("اشتراک صفحه در این مرورگر پشتیبانی نمی‌شود");
       return;
     }
     const button = $("[data-share]"); button.disabled = true;
@@ -398,7 +415,7 @@
         if (audioTrack) state.shareAudioTransceiver = state.pc.addTransceiver(audioTrack, { direction: "sendrecv", streams: [shareStream] });
       }
       send({ type: "video-mode", mode: "screen" });
-      button.classList.add("on"); $("span", button).textContent = "توقف شیر";
+      button.classList.add("on"); $("span", button).textContent = t("توقف شیر");
       refreshLocalTile(); announce("انتخاب صفحه باز شد؛ تصویر صفحه به اتاق فرستاده می‌شود");
     } catch (error) {
       for (const state of peerConnections.values()) {
@@ -412,7 +429,7 @@
       }
       shareStream?.getTracks().forEach(track => track.stop()); shareStream = null;
       send({ type: "video-mode", mode: cameraTrack?.readyState === "live" && cameraTrack.enabled ? "camera" : "none" });
-      button.classList.remove("on"); $("span", button).textContent = "شیر اسکرین";
+      button.classList.remove("on"); $("span", button).textContent = t("شیر اسکرین");
       refreshLocalTile();
       if (error.name === "NotAllowedError") announce("اشتراک صفحه لغو شد");
       else announce("اشتراک صفحه شروع نشد");
@@ -425,8 +442,8 @@
       activeRoomId = message.roomId;
       activeRoomName = message.roomName || activeRoomName;
       $("#activeRoomTitle").textContent = activeRoomName;
-      $("#chatStatus").textContent = `${activeRoomName} · وصل`;
-      $("#roomId").textContent = `کد ${activeRoomId}`;
+      setLocalizedText($("#chatStatus"), "{{name}} · وصل", { name: activeRoomName });
+      setLocalizedText($("#roomId"), "کد {{code}}", { code: activeRoomId });
       replaceRoomHash(activeRoomId);
       setNetworkStatus("● سرور وصل است", true);
       updateParticipants();
@@ -438,7 +455,7 @@
       peerNames.set(message.peer.id, message.peer.name);
       videoModes.set(message.peer.id, message.peer.videoMode || "none");
       updateParticipants();
-      addSystemMessage(`${message.peer.name} وارد اتاق شد`);
+      addSystemMessage("{{name}} وارد اتاق شد", { name: message.peer.name });
       return;
     }
     if (message.type === "video-mode") {
@@ -446,8 +463,8 @@
       return;
     }
     if (message.type === "peer-left") {
-      const name = peerNames.get(message.peerId) || "یکی از دوستان";
-      removePeer(message.peerId); addSystemMessage(`${name} از اتاق خارج شد`);
+      const name = peerNames.get(message.peerId) || t("یکی از دوستان");
+      removePeer(message.peerId); addSystemMessage("{{name}} از اتاق خارج شد", { name });
       return;
     }
     if (message.type === "signal") {
@@ -456,7 +473,7 @@
       signalQueues.set(message.from, queued);
       return;
     }
-    if (message.type === "chat") { addChatMessage(message.name || "مهمان", message.text); return; }
+    if (message.type === "chat") { addChatMessage(message.name || t("مهمان"), message.text); return; }
     if (message.type === "error") {
       setNetworkStatus("● ورود ناموفق", false);
       announce(message.message || "خطای اتصال");
@@ -495,10 +512,10 @@
   }
   function openRoom(name, roomCode = randomRoomCode()) {
     if (socket && socket.readyState !== WebSocket.CLOSED) leaveRoom(false);
-    activeRoomName = name || "اتاق سامیکا";
+    activeRoomName = name || t("اتاق سامیکا");
     activeRoomId = roomCode;
     $("#activeRoomTitle").textContent = activeRoomName;
-    $("#roomId").textContent = `کد ${activeRoomId}`;
+    setLocalizedText($("#roomId"), "کد {{code}}", { code: activeRoomId });
     $("#chatMessages").replaceChildren();
     chatVisible = true;
     $("#chatPanel").hidden = false;
@@ -527,17 +544,28 @@
     oldShareStream?.getTracks().forEach(track => { track.onended = null; track.stop(); });
     localAudioTrack = null; cameraTrack = null; selfId = "";
     setDeviceButton("audio", false); setDeviceButton("video", false);
-    const shareButton = $("[data-share]"); shareButton.classList.remove("on", "off"); $("span", shareButton).textContent = "شیر اسکرین";
+    const shareButton = $("[data-share]"); shareButton.classList.remove("on", "off"); $("span", shareButton).textContent = t("شیر اسکرین");
     updateParticipants(); replaceRoomHash("");
     if (closeModal) hideBackdrop(roomBackdrop);
   }
+
+  window.addEventListener("samika:languagechange", () => {
+    setDeviceButton("audio", Boolean(localAudioTrack?.enabled));
+    setDeviceButton("video", Boolean(cameraTrack?.readyState === "live" && cameraTrack.enabled));
+    const shareButton = $("[data-share]");
+    $("span", shareButton).textContent = t(shareStream ? "توقف شیر" : "شیر اسکرین");
+    updateParticipants();
+    for (const [id, tile] of videoTiles) {
+      if (tile.local) updateVideoTile(id, displayName, activeLocalStream(), true);
+    }
+  });
 
   $$('[data-open-create]').forEach(button => button.addEventListener("click", openCreate));
   $$('[data-close-create]').forEach(button => button.addEventListener("click", () => hideBackdrop(createBackdrop)));
   createBackdrop.addEventListener("click", event => { if (event.target === createBackdrop) hideBackdrop(createBackdrop); });
   $("#createForm").addEventListener("submit", event => {
     event.preventDefault();
-    const roomName = $("#roomName").value.trim() || "دورهمی دوستانه";
+    const roomName = $("#roomName").value.trim() || t("دورهمی دوستانه");
     getDisplayName(); openRoom(roomName); $("#roomName").value = "";
     announce(selectedPrivacy === "private" ? "اتاق خصوصی سامیکا ساخته شد" : "اتاق عمومی ساخته شد؛ اتاق‌های عمومی هنوز فهرست نمی‌شوند");
   });
@@ -545,13 +573,13 @@
     selectedPrivacy = input.value;
     $$(".privacy-option").forEach(option => option.classList.toggle("selected", $("input", option).checked));
   }));
-  $$('[data-join]').forEach(button => button.addEventListener("click", () => openRoom(button.dataset.join, roomCodeForName(button.dataset.join))));
+  $$('[data-join]').forEach(button => button.addEventListener("click", () => openRoom(button.dataset.join, roomCodeForName(button.dataset.joinSource || button.dataset.join))));
   function applyRoomFilters() {
-    const query = $("#roomSearch").value.trim().toLocaleLowerCase("fa");
+    const query = $("#roomSearch").value.trim().toLocaleLowerCase(i18n?.locale || "fa-IR");
     let visible = 0;
     $$(".room-card").forEach(card => {
       const categoryMatch = activeFilter === "all" || card.dataset.category === activeFilter;
-      const searchMatch = !query || card.dataset.name.toLocaleLowerCase("fa").includes(query) || $("h3", card).textContent.toLocaleLowerCase("fa").includes(query);
+      const searchMatch = !query || card.dataset.name.toLocaleLowerCase(i18n?.locale || "fa-IR").includes(query) || $("h3", card).textContent.toLocaleLowerCase(i18n?.locale || "fa-IR").includes(query);
       const show = categoryMatch && searchMatch;
       card.hidden = !show;
       if (show) visible++;
@@ -609,5 +637,5 @@
   });
 
   const linkedRoom = readRoomHash();
-  if (linkedRoom && /^[a-zA-Z0-9_-]{3,80}$/.test(linkedRoom)) setTimeout(() => openRoom("اتاق دعوت‌شدهٔ سامیکا", linkedRoom), 0);
+  if (linkedRoom && /^[a-zA-Z0-9_-]{3,80}$/.test(linkedRoom)) setTimeout(() => openRoom("Samika", linkedRoom), 0);
 })();

@@ -54,11 +54,12 @@ const server = http.createServer((request, response) => {
     response.end(JSON.stringify({ ok: true, service: "samika-signaling", rooms: rooms.size }));
     return;
   }
-  if (pathname === "/app.js") {
-    fs.readFile(path.join(__dirname, "app.js"), (error, data) => {
+  if (pathname === "/app.js" || pathname === "/i18n.js") {
+    const assetPath = path.join(__dirname, pathname.slice(1));
+    fs.readFile(assetPath, (error, data) => {
       if (error) {
         response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
-        response.end("Samika could not load its app code.");
+        response.end("Samika could not load its JavaScript asset.");
         return;
       }
       response.writeHead(200, {

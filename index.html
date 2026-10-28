@@ -2,8 +2,10 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0b13">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="یک پاتوق آنلاین برای تماشای فیلم، بازی و گپ‌وگفت با دوستان.">
   <title>سامیکا | Samika — دورهمی آنلاین</title>
   <style>
@@ -22,7 +24,7 @@
       --shadow: 0 30px 90px rgba(0,0,0,.42);
     }
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; -webkit-text-size-adjust: 100%; }
     body {
       margin: 0;
       background:
@@ -30,7 +32,7 @@
         radial-gradient(ellipse at 9% 38%, rgba(42,106,107,.1), transparent 27rem),
         var(--bg);
       color: var(--ink);
-      font-family: Vazirmatn, "Segoe UI", Tahoma, Arial, sans-serif;
+      font-family: Vazirmatn, -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial, sans-serif;
       line-height: 1.65;
     }
     button, input { font: inherit; }
@@ -88,7 +90,7 @@
     .tool svg { width:15px;height:15px; }
     .mini-play { background:var(--purple-2); border:0; color:white; width:38px; height:38px; border-radius:13px; display:grid; place-items:center; }
     .showcase-caption { color:#9e9bad; font-size:10px; }
-    .floating-note { position:absolute; left:-47px; bottom:92px; padding:11px 14px; border:1px solid #ffffff17; border-radius:15px; background:rgba(25,24,37,.93); backdrop-filter:blur(12px); box-shadow:0 10px 35px #0006; color:#d8d5e2; font-size:10px; }
+    .floating-note { position:absolute; inset-inline-start:-47px; bottom:92px; padding:11px 14px; border:1px solid #ffffff17; border-radius:15px; background:rgba(25,24,37,.93); backdrop-filter:blur(12px); box-shadow:0 10px 35px #0006; color:#d8d5e2; font-size:10px; }
     .floating-note b { color:#fff; font-size:11px; }
     .note-line { display:flex; gap:8px; align-items:center; }
     .music-dot { width:25px;height:25px;border-radius:9px;display:grid;place-items:center;background:#9d7bff30;color:#cabbff; }
@@ -142,8 +144,8 @@
     .cover-board { background:linear-gradient(145deg,#49345d,#28213f 60%,#1f1d35); }
     .cover-board:before { width:140px;height:140px;left:30px;top:-53px;background:#cb90ff6c; }
     .cover-word { font-size:30px;font-weight:900;color:#fff9;z-index:1;text-shadow:0 3px 20px #0006;letter-spacing:-1px; }
-    .room-tag { position:absolute;top:11px;right:11px;border:1px solid #ffffff24;background:#10101877;backdrop-filter:blur(8px);border-radius:999px;padding:4px 8px;color:#f2eefe;font-size:9px; }
-    .online-dot { position:absolute;left:12px;top:15px;display:flex;align-items:center;gap:5px;color:#e4f7ef;font-size:9px; }
+    .room-tag { position:absolute;top:11px;inset-inline-start:11px;border:1px solid #ffffff24;background:#10101877;backdrop-filter:blur(8px);border-radius:999px;padding:4px 8px;color:#f2eefe;font-size:9px; }
+    .online-dot { position:absolute;inset-inline-end:12px;top:15px;display:flex;align-items:center;gap:5px;color:#e4f7ef;font-size:9px; }
     .online-dot i { width:6px;height:6px;background:#83e3c1;border-radius:50%; }
     .room-info { padding:13px 15px 14px; }
     .room-info h3 { font-size:14px;margin:0 0 5px; }
@@ -174,12 +176,20 @@
     .footer-brand { display:flex;align-items:center;gap:8px;color:#cac6d5;font-size:12px;font-weight:700; }
     .footer-brand .brand-mark { width:25px;height:25px;border-radius:9px; }
     .footer-links { display:flex;gap:17px; }
+    .language-switcher { display:flex;align-items:center;gap:6px;flex:none;color:#d8d4e2; }
+    .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+    .language-switcher select { height:38px;min-width:104px;padding:0 10px;border:1px solid var(--line);border-radius:11px;background:#ffffff08;color:#f3efff;font:inherit;font-size:11px; }
+    .language-switcher select:focus-visible { outline:2px solid #9b7bff;outline-offset:2px; }
+    .language-switcher option { color:#16141f;background:#fff; }
+    .brand [data-brand-alt][hidden] { display:none; }
+    html:not([lang="fa"]) .brand > span:last-child { display:none; }
+    button,select,input { touch-action:manipulation; }
     /* dialogs and demo room */
     .modal-backdrop { display:none;position:fixed;inset:0;z-index:50;background:#05050ae0;backdrop-filter:blur(9px);align-items:center;justify-content:center;padding:18px; }
     .modal-backdrop.open { display:flex; }
     .dialog { width:min(430px,100%);border:1px solid #ffffff19;border-radius:23px;background:#151520;box-shadow:0 24px 90px #0009;padding:24px;position:relative;animation:pop .22s ease-out; }
     @keyframes pop { from{transform:translateY(8px) scale(.98);opacity:0}to{transform:none;opacity:1} }
-    .close-x { width:31px;height:31px;display:grid;place-items:center;border:1px solid var(--line);background:#ffffff06;color:#c7c3d2;border-radius:10px;cursor:pointer;position:absolute;left:18px;top:18px; }
+    .close-x { width:31px;height:31px;display:grid;place-items:center;border:1px solid var(--line);background:#ffffff06;color:#c7c3d2;border-radius:10px;cursor:pointer;position:absolute;inset-inline-start:18px;top:18px; }
     .dialog h2 { font-size:22px;margin:0 0 5px; }
     .dialog > p { color:#9693a6;font-size:11px;margin:0 0 20px; }
     .field-label { display:block;font-size:11px;color:#d2cedc;margin-bottom:7px; }
@@ -191,7 +201,7 @@
     .privacy-option input { accent-color:#9377ff; }
     .dialog .btn { width:100%; }
     .demo-label { font-size:9px;color:#9d99a8;margin-top:13px;text-align:center; }
-    .room-modal { padding:0;overflow:hidden;width:min(1440px,100%);height:min(900px,calc(100dvh - 36px));border-radius:22px;display:flex;flex-direction:column; }
+    .room-modal { padding:0;overflow:hidden;width:min(1440px,100%);height:min(900px,calc(100vh - 36px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)));height:min(900px,calc(100dvh - 36px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)));border-radius:22px;display:flex;flex-direction:column; }
     .room-top { height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 17px;border-bottom:1px solid var(--line);flex:none; }
     .room-top-left,.room-top-right { display:flex;align-items:center;gap:11px; }
     .room-top-title { font-size:12px;font-weight:800; }
@@ -218,8 +228,8 @@
     .video-grid.has-screen-share[data-count="1"] .video-tile[data-kind="screen"] { grid-column:1;grid-row:1; }
     .video-tile .tile-avatar { width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#c6b3ff,#8068cf);color:#191522;font-weight:800;font-size:19px; }
     .video-tile.has-video .tile-avatar { display:none; }
-    .video-tile .video-name { position:absolute;z-index:1;right:8px;bottom:7px;background:#0b0b13a8;padding:3px 7px;border-radius:7px;font-size:9px;color:#fff; }
-    .video-tile .audio-state { position:absolute;z-index:1;left:7px;bottom:7px;background:#0b0b13a8;padding:3px 6px;border-radius:7px;font-size:8px;color:#bfb9ce; }
+    .video-tile .video-name { position:absolute;z-index:1;inset-inline-start:8px;bottom:7px;background:#0b0b13a8;padding:3px 7px;border-radius:7px;font-size:9px;color:#fff; }
+    .video-tile .audio-state { position:absolute;z-index:1;inset-inline-end:7px;bottom:7px;background:#0b0b13a8;padding:3px 6px;border-radius:7px;font-size:8px;color:#bfb9ce; }
     .stage-center { position:relative;text-align:center;text-shadow:0 2px 18px #0009; }
     .stage-center .avatar { width:58px;height:58px;margin:0 auto 10px;border:2px solid #ffffff88;font-size:19px; }
     .stage-center strong { display:block;font-size:14px; }
@@ -236,31 +246,33 @@
     .room-control.on { color:#eae5ff;border-color:#aa93ff55;background:#9e7fff20; }
     .room-control.off { color:#ffb6bc;background:#f865701d;border-color:#f8657044; }
     .room-control.leave { background:#ed526429;border-color:#f76b794d;color:#ffb8bf; }
-    .chat-panel { border-right:1px solid var(--line);min-height:0;display:flex;flex-direction:column;background:#101019; }
+    .chat-panel { border-inline-start:1px solid var(--line);min-height:0;display:flex;flex-direction:column;background:#101019; }
     .chat-head { padding:14px 15px;border-bottom:1px solid var(--line);font-size:11px;font-weight:800;display:flex;justify-content:space-between;align-items:center; }
     .chat-head small { color:#9290a0;font-weight:400;font-size:9px; }
-    .chat-messages { min-height:0;flex:1;overflow:auto;padding:13px 12px;display:flex;flex-direction:column;gap:12px; }
+    .chat-messages { min-height:0;flex:1;overflow:auto;padding:13px 12px;display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain; }
     .chat-message { font-size:10px;line-height:1.7; }
     .chat-message b { color:#d0c1ff;font-size:9px;display:block;margin-bottom:2px; }
     .chat-message.self b { color:#8cddbf; }
     .chat-message p { margin:0;color:#d5d2de; }
     .system-message { text-align:center;color:#828091;font-size:8px;padding:3px 0; }
     .chat-compose { padding:10px;border-top:1px solid var(--line);display:flex;gap:7px; }
-    .chat-compose input { flex:1;min-width:0;background:#1a1a26;border:1px solid #ffffff12;border-radius:10px;color:#fff;padding:0 10px;outline:0;font-size:10px; }
+    .chat-compose input { flex:1;min-width:0;background:#1a1a26;border:1px solid #ffffff12;border-radius:10px;color:#fff;padding:0 10px;outline:0;font-size:16px; }
     .chat-compose button { width:36px;height:36px;border:0;border-radius:10px;background:#8566f4;color:#fff;display:grid;place-items:center;cursor:pointer; }
     .chat-compose svg { width:15px;height:15px; }
     .toast { position:fixed;z-index:80;bottom:25px;left:50%;transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#292538;border:1px solid #ffffff1c;color:#f1edf9;padding:10px 15px;border-radius:12px;font-size:11px;box-shadow:0 14px 36px #0008;transition:.22s;white-space:nowrap; }
     .toast.show { opacity:1;transform:translate(-50%,0); }
     @media(max-width:950px) {
       .hero { gap:32px;padding-top:55px; }
-      .floating-note { left:-17px; }
+      .hero-art:before { display:none; }
+      .floating-note { inset-inline-start:-17px; }
       .activity-grid { grid-template-columns:repeat(2,1fr); }
     }
     @media(max-width:700px) {
-      .modal-backdrop { padding:8px; }
+      .modal-backdrop { padding:max(8px,env(safe-area-inset-top,0px)) max(8px,env(safe-area-inset-right,0px)) max(8px,env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px)); }
       .wrap,.topbar-inner { width:min(100% - 30px,560px); }
       .topbar { height:66px; }
       .nav { display:none; }
+      .language-switcher select { min-width:78px;width:78px;height:38px;padding-inline:7px;font-size:10px; }
       .nav-actions .btn-ghost { display:none; }
       .nav-actions .btn { min-height:38px;padding:0 12px;font-size:11px; }
       .brand { font-size:17px; }
@@ -269,8 +281,9 @@
       h1 { font-size:42px; }
       .hero-copy>p { font-size:14px; }
       .hero-art { margin:0 5px;transform:none;padding:12px;border-radius:22px; }
+      .hero-art:before { display:none; }
       .showcase-stage { height:240px; }
-      .floating-note { left:-6px;bottom:78px; }
+      .floating-note { inset-inline-start:-6px;bottom:78px; }
       .metrics { justify-content:space-between;gap:8px; }
       .metric { gap:6px; }
       .metric-icon { width:30px;height:30px; }
@@ -296,16 +309,16 @@
       .faq { grid-template-columns:1fr;gap:20px;padding-bottom:55px; }
       .faq-intro p { max-width:450px; }
       .footer-inner { gap:12px;flex-wrap:wrap; }
-      .room-modal { height:calc(100dvh - 16px); }
-      .room-layout { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(240px,1fr) minmax(105px,24dvh); }
+      .room-modal { height:100%;max-height:100%;border-radius:18px; }
+      .room-layout { grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(240px,1fr) minmax(105px,24vh);grid-template-rows:minmax(240px,1fr) minmax(105px,24dvh); }
       .room-layout.chat-hidden { grid-template-rows:minmax(0,1fr); }
       .room-main { padding:10px;gap:8px; }
       .room-stage { min-height:0; }
       .participant-strip { display:none; }
       .room-controls { flex:none;gap:6px; }
-      .room-control { min-width:42px;padding:0 10px;height:40px; }
+      .room-control { min-width:44px;padding:0 10px;height:44px; }
       .room-control span { display:none; }
-      .chat-panel { border-right:0;border-top:1px solid var(--line); }
+      .chat-panel { border-inline-start:0;border-top:1px solid var(--line); }
       .chat-messages { padding:8px 12px; }
       .room-top { height:48px;padding:0 11px; }
       .room-top-right .room-id { display:none; }
@@ -314,11 +327,18 @@
       .room-top-right .btn { min-height:30px!important;padding:0 7px!important;font-size:8px!important;white-space:nowrap; }
       .room-live { white-space:nowrap;font-size:8px; }
       .video-grid { inset:7px;gap:6px;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); }
-      .video-grid.has-screen-share { grid-template-columns:minmax(0,1fr) 96px;grid-template-rows:repeat(4,minmax(0,1fr));gap:5px; }
+      .video-grid.has-screen-share { grid-template-columns:minmax(0,1fr) minmax(76px,24vw);grid-template-rows:repeat(4,minmax(0,1fr));gap:5px; }
       .video-grid.has-screen-share .video-tile { border-radius:8px; }
-      .video-grid.has-screen-share .video-tile .video-name { right:4px;bottom:4px;font-size:8px;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+      .video-grid.has-screen-share .video-tile .video-name { inset-inline-start:4px;bottom:4px;font-size:8px;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
       .video-grid.has-screen-share .video-tile .audio-state { display:none; }
+      .search-box input,.text-input { font-size:16px; }
+      .chat-compose button { width:44px;height:44px;flex:none; }
+      .room-controls { padding-bottom:max(0px,env(safe-area-inset-bottom,0px)); }
     }
+    @media(max-width:390px) { .brand { gap:6px;font-size:15px; }.brand-mark { width:30px;height:30px; }.nav-actions { gap:6px; }.nav-actions .btn { padding-inline:8px;font-size:10px; }.language-switcher select { min-width:70px;width:70px; } }
+    @media(max-height:620px) and (max-width:700px) { .room-layout { grid-template-rows:minmax(150px,1fr) minmax(82px,22vh);grid-template-rows:minmax(150px,1fr) minmax(82px,22dvh); }.room-top { height:42px; }.room-controls { gap:4px; }.room-control { height:44px;min-width:44px; } }
+    @media(max-height:620px) and (min-width:701px) and (max-width:950px) { .room-top { height:44px; }.room-main { padding:8px;gap:8px; }.room-stage { min-height:0; }.participant-strip { display:none; }.room-controls { flex:none;gap:4px; }.room-control { height:44px;min-height:44px; } }
+    @media(hover:none) { .btn:hover,.room-card:hover,.activity-card:hover { transform:none; } }
     @media(prefers-reduced-motion:reduce) { *,*:before,*:after { scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important; } }
   </style>
 </head>
@@ -327,6 +347,7 @@
     <div class="topbar-inner">
       <a class="brand" href="#top" aria-label="سامیکا، صفحهٔ اصلی"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12h.01M12 12h.01M15 12h.01" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></span>سامیکا <span style="font-size:11px;color:#aaa4be">Samika</span></a>
       <nav class="nav" aria-label="ناوبری اصلی"><a href="#activities">امکانات</a><a href="#rooms">اتاق‌ها</a><a href="#how">چطور کار می‌کند؟</a><a href="#faq">پرسش‌ها</a></nav>
+      <label class="language-switcher"><span class="sr-only">زبان سایت</span><select id="languageSelect" aria-label="زبان سایت"><option value="fa">فارسی</option><option value="en">English</option><option value="tr">Türkçe</option><option value="ar">العربية</option><option value="fr">Français</option></select></label>
       <div class="nav-actions"><button class="btn btn-ghost" data-open-create>ورود به اتاق</button><button class="btn btn-primary" data-open-create>ساخت اتاق رایگان</button></div>
     </div>
   </header>
@@ -413,6 +434,7 @@
   <div class="modal-backdrop" id="roomBackdrop" aria-hidden="true"><section class="dialog room-modal" role="dialog" aria-modal="true" aria-label="اتاق سامیکا"><div class="room-top"><div class="room-top-left"><span class="brand-mark" style="width:27px;height:27px;border-radius:9px"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5c0-4.1 3.1-7.5 7-7.5s7 3.4 7 7.5-3.1 7.5-7 7.5H5l1.8-3.3A8 8 0 0 1 5 12.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></span><span class="room-top-title" id="activeRoomTitle">اتاق دورهمی</span><span class="room-live" id="networkStatus">● در حال اتصال…</span></div><div class="room-top-right"><span class="room-id" id="roomId">کد اتاق —</span><button class="btn btn-ghost" style="min-height:31px;padding:0 10px;font-size:9px" id="inviteBtn">کپی لینک دعوت</button><button class="close-x" id="closeRoom" aria-label="خروج از اتاق" style="position:static">×</button></div></div><div class="room-layout"><div class="room-main"><div class="room-stage"><svg class="room-illustration" viewBox="0 0 900 540" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="roomwall" x2="0" y2="1"><stop stop-color="#514568"/><stop offset="1" stop-color="#28263d"/></linearGradient><linearGradient id="roomfloor" x2="0" y2="1"><stop stop-color="#433747"/><stop offset="1" stop-color="#241e2e"/></linearGradient><radialGradient id="roomlight"><stop stop-color="#ffcf96" stop-opacity=".8"/><stop offset="1" stop-color="#ffcf96" stop-opacity="0"/></radialGradient></defs><rect width="900" height="540" fill="url(#roomwall)"/><rect y="380" width="900" height="160" fill="url(#roomfloor)"/><circle cx="660" cy="230" r="240" fill="url(#roomlight)" opacity=".28"/><rect x="567" y="68" width="245" height="240" rx="8" fill="#35445e" stroke="#ddc2a5" stroke-width="12"/><path d="M580 242 650 160l48 46 38-65 65 72v80H580Z" fill="#363653"/><rect x="690" y="80" width="4" height="220" fill="#dfc3a4"/><ellipse cx="455" cy="438" rx="284" ry="72" fill="#9b7082" opacity=".28"/><rect x="256" y="296" width="389" height="145" rx="35" fill="#9d6c78"/><rect x="233" y="325" width="65" height="110" rx="23" fill="#91647a"/><rect x="605" y="325" width="65" height="110" rx="23" fill="#835d76"/><path d="M319 304v125m126-125v124m117-124v125" stroke="#e2af9c" stroke-opacity=".25" stroke-width="3"/><path d="M720 383V284m0 12-37-24m37 13 31-34m-31 21 42-2" stroke="#718768" stroke-width="11" stroke-linecap="round"/><path d="M681 385h83l-11 15h-61Z" fill="#705066"/><path d="M695 305c-32-25-18-58 6-48 10-34 45-23 39 1 28-15 46 20 19 37" fill="#7e9877"/></svg><div class="video-grid" id="videoGrid"></div><span class="stream-badge" id="roomModeBadge">✦ سامیکا · ارتباط زنده</span><div class="stage-center" id="stageEmpty"><span class="avatar">س</span><strong>خوش اومدی به سامیکا!</strong><small>میکروفن یا دوربین را روشن کن و دوستات را دعوت کن</small></div></div><div class="participant-strip" id="participantStrip"></div><div class="room-controls"><button class="room-control" data-device="audio" aria-label="روشن و خاموش کردن میکروفن"><svg viewBox="0 0 24 24" fill="none"><rect x="8" y="3" width="8" height="13" rx="4" stroke="currentColor" stroke-width="1.7"/><path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3m-4 0h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg><span>روشن‌کردن میکروفن</span></button><button class="room-control" data-device="video" aria-label="روشن و خاموش کردن دوربین"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="m16 10 5-3v10l-5-3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>روشن‌کردن دوربین</span></button><button class="room-control" data-share aria-label="شروع یا توقف اشتراک‌گذاری صفحه"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8m-4-4v4m-4-9 2.5-2.5L13 11l2-2 2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>شیر اسکرین</span></button><button class="room-control" data-toggle="chat" aria-label="نمایش چت"><svg viewBox="0 0 24 24" fill="none"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.8-3.3A7.5 7.5 0 1 1 20 11.5Z" stroke="currentColor" stroke-width="1.7"/><path d="M8 11h.01M12 11h.01M16 11h.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg><span>چت</span></button><button class="room-control leave" id="leaveRoom" aria-label="خروج"><span>خروج</span><svg viewBox="0 0 24 24" fill="none"><path d="M10 17l5-5-5-5m5 5H3m8-9h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div><aside class="chat-panel" id="chatPanel"><div class="chat-head"><span>گپ دورهمی</span><small id="chatStatus">اتاق سامیکا</small></div><div class="chat-messages" id="chatMessages"><div class="system-message">به اتاق خوش اومدی! دوستات رو دعوت کن 👋</div></div><form class="chat-compose" id="chatForm"><input id="chatInput" maxlength="250" placeholder="یه چیزی بنویس..." aria-label="پیام چت"><button type="submit" aria-label="فرستادن پیام"><svg viewBox="0 0 24 24" fill="none"><path d="m21 3-7.2 18-3.7-7.1L3 10.2 21 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m10.1 13.9 4.5-4.5" stroke="currentColor" stroke-width="1.7"/></svg></button></form></aside></div></section></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="app.js?v=20261028-2"></script>
+  <script src="i18n.js?v=20261028-3"></script>
+  <script src="app.js?v=20261028-3"></script>
 </body>
 </html>
